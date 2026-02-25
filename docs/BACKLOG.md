@@ -57,3 +57,4 @@
 - [x] Story 9.3: Refatoração SyncPage e Monitoramento (V2.0)
 - [x] Story 9.4: Refatoração Vendas e Pivot Tables (V2.0)
 - [x] Story 9.5: Refatoração Clientes, Vendedores e Login (V2.0)
+- [x] Story 9.6: Refinamento de Proporções, Escala Global e Contexto Temporal (V2.0)
