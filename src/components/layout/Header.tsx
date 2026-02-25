@@ -24,7 +24,7 @@ export function Header({ collapsed, onToggleSidebar }: HeaderProps) {
   const badgeClass = ROLE_BADGE_CLASSES[role] ?? ROLE_BADGE_CLASSES.vendedor
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between shadow-sm bg-background/80 backdrop-blur-md px-5 border-b">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between shadow-sm bg-background/80 backdrop-blur-md px-6 border-b">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"

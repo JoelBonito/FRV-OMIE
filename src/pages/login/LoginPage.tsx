@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/contexts/AuthContext'
-import { APP_NAME, ROUTES } from '@/lib/constants'
+import { ROUTES } from '@/lib/constants'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -44,8 +44,8 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-md border-t-4 border-t-[#0066FF] shadow-xl">
         <CardHeader className="text-center pt-8 pb-4">
-          <CardTitle className="text-3xl font-extrabold tracking-tight text-[#0066FF]">
-            {APP_NAME}
+          <CardTitle className="flex justify-center">
+            <img src="/omie-logo.png" alt="Omie" className="h-10 w-auto" />
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2">
             Faça login para acessar o sistema

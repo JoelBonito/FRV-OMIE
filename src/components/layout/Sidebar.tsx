@@ -57,20 +57,23 @@ export function Sidebar({ collapsed }: SidebarProps) {
       {/* Logo */}
       <div
         className={cn(
-          'flex h-14 shrink-0 items-center border-b border-sidebar-border',
-          collapsed ? 'justify-center px-2' : 'gap-3 px-4'
+          'flex h-16 shrink-0 items-center justify-start border-b border-sidebar-border',
+          collapsed ? 'justify-center px-2' : 'gap-4 px-6'
         )}
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0066FF] text-lg font-bold text-white shadow-lg shadow-[#0066FF]/30">
-          FO
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 p-1.5 ring-1 ring-white/10 shadow-inner">
+          <img
+            src="/favicon.svg"
+            alt="Omie Icon"
+            className="h-full w-full object-contain"
+            style={{ filter: 'brightness(0) invert(1) saturate(5) hue-rotate(160deg)' }}
+          />
         </div>
         {!collapsed && (
-          <div className="flex flex-col">
-            <span className="text-lg font-extrabold tracking-tight text-sidebar-foreground">
-              FRV Omie
-            </span>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-sidebar-foreground/60">
-              Dashboard v2.0
+          <div className="flex flex-col gap-0.5">
+            <img src="/omie-logo.png" alt="Omie" className="h-5 w-auto brightness-0 invert opacity-95" />
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/40 leading-none">
+              Dashboard V2.0
             </span>
           </div>
         )}
@@ -108,7 +111,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
       </nav>
 
       {/* User section */}
-      <div className="mt-auto shrink-0 border-t border-sidebar-border p-3">
+      <div className="mt-auto shrink-0 border-t border-sidebar-border p-4">
         <div
           className={cn(
             'rounded-xl border border-sidebar-border bg-sidebar-accent',
