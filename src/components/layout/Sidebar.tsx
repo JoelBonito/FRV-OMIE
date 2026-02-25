@@ -57,23 +57,31 @@ export function Sidebar({ collapsed }: SidebarProps) {
       {/* Logo */}
       <div
         className={cn(
-          'flex h-16 shrink-0 items-center justify-start border-b border-sidebar-border',
-          collapsed ? 'justify-center px-2' : 'gap-4 px-6'
+          'flex h-28 shrink-0 flex-col justify-center border-b border-sidebar-border bg-sidebar-accent/5',
+          collapsed ? 'items-center px-2' : 'px-8'
         )}
       >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 p-1.5 ring-1 ring-white/10 shadow-inner">
-          <img
-            src="/favicon.svg"
-            alt="Omie Icon"
-            className="h-full w-full object-contain"
-            style={{ filter: 'brightness(0) invert(1) saturate(5) hue-rotate(160deg)' }}
-          />
+        <div className="flex items-center gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/5 p-2 ring-1 ring-white/15 shadow-2xl">
+            <img
+              src="/favicon.svg"
+              alt="Omie Icon"
+              className="h-full w-full object-contain pointer-events-none select-none"
+              style={{ filter: 'brightness(0) invert(1) saturate(5) hue-rotate(160deg)' }}
+            />
+          </div>
+          {!collapsed && (
+            <img
+              src="/omie-logo.png"
+              alt="Omie Logo"
+              className="h-[22px] w-auto brightness-0 invert opacity-95 pointer-events-none select-none"
+            />
+          )}
         </div>
         {!collapsed && (
-          <div className="flex flex-col gap-0.5">
-            <img src="/omie-logo.png" alt="Omie" className="h-5 w-auto brightness-0 invert opacity-95" />
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/40 leading-none">
-              Dashboard V2.0
+          <div className="mt-4 flex w-full items-center justify-start pl-1">
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-sidebar-foreground/30 leading-none">
+              DASHBOARD V2.0
             </span>
           </div>
         )}
