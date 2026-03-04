@@ -355,6 +355,16 @@ export interface Database {
         }
         Relationships: []
       }
+      config_omie_safe: {
+        Row: {
+          id: string
+          sync_interval_hours: number
+          status_sync: string
+          ultimo_sync: string | null
+          has_credentials: boolean
+        }
+        Relationships: []
+      }
     }
     Functions: Record<string, never>
     Enums: Record<string, never>

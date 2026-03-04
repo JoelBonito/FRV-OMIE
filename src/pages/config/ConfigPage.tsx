@@ -1,95 +1,31 @@
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
 import {
   Settings,
   Key,
   Users,
-  Save,
-  Eye,
-  EyeOff,
   ShieldCheck,
   Clock,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react'
-import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
-import { useConfigOmie, useUpsertConfigOmie } from '@/hooks/useConfig'
+import { useConfigOmie } from '@/hooks/useConfig'
 import { useRole } from '@/hooks/useRole'
-import type { Tables } from '@/lib/types/database'
+import type { ConfigOmieSafe } from '@/services/api/config'
 
-type ConfigOmie = Tables<'config_omie'>
-
-interface OmieFormValues {
-  app_key: string
-  app_secret: string
-  webhook_secret: string
-  sync_interval_hours: string
-}
-
-const SYNC_INTERVALS = [
-  { value: '1', label: '1 hora' },
-  { value: '3', label: '3 horas' },
-  { value: '6', label: '6 horas' },
-  { value: '12', label: '12 horas' },
-  { value: '24', label: '24 horas' },
-]
-
-function OmieCredentialsForm({ config }: { config: ConfigOmie | null }) {
-  const upsert = useUpsertConfigOmie()
-  const [showKey, setShowKey] = useState(false)
-  const [showSecret, setShowSecret] = useState(false)
-
-  const { register, handleSubmit, setValue, watch, formState: { isDirty } } =
-    useForm<OmieFormValues>({
-      defaultValues: {
-        app_key: config?.app_key ?? '',
-        app_secret: config?.app_secret ?? '',
-        webhook_secret: config?.webhook_secret ?? '',
-        sync_interval_hours: String(config?.sync_interval_hours ?? 6),
-      },
-    })
-
-  const intervalValue = watch('sync_interval_hours')
-
-  function onSubmit(values: OmieFormValues) {
-    upsert.mutate(
-      {
-        config: {
-          app_key: values.app_key,
-          app_secret: values.app_secret,
-          webhook_secret: values.webhook_secret || undefined,
-          sync_interval_hours: Number(values.sync_interval_hours),
-        },
-        existingId: config?.id,
-      },
-      {
-        onSuccess: () => toast.success('Configurações salvas com sucesso'),
-        onError: (err) =>
-          toast.error(`Erro ao salvar: ${err.message}`),
-      }
-    )
-  }
+function OmieStatusSection({ config }: { config: ConfigOmieSafe | null }) {
+  const hasCredentials = config?.has_credentials ?? false
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <div className="space-y-6">
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -98,74 +34,43 @@ function OmieCredentialsForm({ config }: { config: ConfigOmie | null }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="app_key">App Key</Label>
-            <div className="relative">
-              <Input
-                id="app_key"
-                type={showKey ? 'text' : 'password'}
-                placeholder="Sua app_key do Omie"
-                autoComplete="off"
-                {...register('app_key', { required: true })}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3"
-                onClick={() => setShowKey(!showKey)}
-              >
-                {showKey ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+          {/* Credential status */}
+          <div className="flex items-center gap-3 rounded-lg border p-4">
+            {hasCredentials ? (
+              <>
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                <div>
+                  <p className="text-sm font-medium">Credenciais configuradas</p>
+                  <p className="text-xs text-muted-foreground">
+                    As chaves da API Omie estão armazenadas de forma segura no banco de dados.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <XCircle className="h-5 w-5 text-destructive" />
+                <div>
+                  <p className="text-sm font-medium">Credenciais não configuradas</p>
+                  <p className="text-xs text-muted-foreground">
+                    As chaves da API Omie precisam ser configuradas via migration SQL.
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="app_secret">App Secret</Label>
-            <div className="relative">
-              <Input
-                id="app_secret"
-                type={showSecret ? 'text' : 'password'}
-                placeholder="Sua app_secret do Omie"
-                autoComplete="off"
-                {...register('app_secret', { required: true })}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3"
-                onClick={() => setShowSecret(!showSecret)}
-              >
-                {showSecret ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
+          {/* Sync interval */}
+          <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">Intervalo de sincronização</span>
             </div>
+            <Badge variant="secondary" className="tabular-nums">
+              A cada {config?.sync_interval_hours ?? 6}h
+            </Badge>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="webhook_secret">
-              Webhook Secret{' '}
-              <span className="text-muted-foreground">(opcional)</span>
-            </Label>
-            <Input
-              id="webhook_secret"
-              type="text"
-              placeholder="Secret para validação de webhooks"
-              {...register('webhook_secret')}
-            />
-            <p className="text-xs text-muted-foreground">
-              Token de autenticação para webhooks do Omie. Será validado via{' '}
-              <code className="rounded bg-muted px-1 py-0.5">endpoint_token</code>.
-            </p>
-          </div>
+          <Separator />
 
           {/* Webhook URL info */}
           <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 space-y-2">
@@ -183,41 +88,16 @@ function OmieCredentialsForm({ config }: { config: ConfigOmie | null }) {
             </p>
           </div>
 
-          <Separator />
-
-          <div className="space-y-2">
-            <Label>
-              <Clock className="mr-1 inline h-3.5 w-3.5" />
-              Intervalo de Sincronização
-            </Label>
-            <Select
-              value={intervalValue}
-              onValueChange={(v) =>
-                setValue('sync_interval_hours', v, { shouldDirty: true })
-              }
-            >
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SYNC_INTERVALS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    A cada {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="rounded-lg border border-dashed p-4">
+            <p className="text-xs text-muted-foreground">
+              Para alterar as credenciais da API ou o intervalo de sincronização,
+              edite a tabela <code className="rounded bg-muted px-1 py-0.5">frv_omie.config_omie</code> diretamente
+              no Supabase Dashboard ou via migration SQL.
+            </p>
           </div>
         </CardContent>
       </Card>
-
-      <div className="flex justify-end">
-        <Button type="submit" className="gap-2" disabled={!isDirty || upsert.isPending}>
-          <Save className="h-4 w-4" />
-          {upsert.isPending ? 'Salvando...' : 'Salvar Configurações'}
-        </Button>
-      </div>
-    </form>
+    </div>
   )
 }
 
@@ -297,7 +177,7 @@ export function ConfigPage() {
           Configurações
         </h2>
         <p className="text-muted-foreground">
-          Gerenciamento de credenciais e configurações do sistema
+          Status de credenciais e configurações do sistema
         </p>
       </div>
 
@@ -315,7 +195,7 @@ export function ConfigPage() {
         </TabsList>
 
         <TabsContent value="omie">
-          <OmieCredentialsForm config={config ?? null} />
+          <OmieStatusSection config={config ?? null} />
         </TabsContent>
 
         <TabsContent value="users">

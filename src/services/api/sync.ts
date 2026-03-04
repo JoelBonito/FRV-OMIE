@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase'
-import type { Tables } from '@/lib/types/database'
+import type { Tables, Views } from '@/lib/types/database'
 
 type SyncLog = Tables<'sync_logs'>
-type ConfigOmie = Tables<'config_omie'>
+export type ConfigOmieSafe = Views<'config_omie_safe'>
 
 export async function getSyncLogs(limit = 50): Promise<SyncLog[]> {
   const { data, error } = await supabase
@@ -14,14 +14,14 @@ export async function getSyncLogs(limit = 50): Promise<SyncLog[]> {
   return (data ?? []) as SyncLog[]
 }
 
-export async function getConfigOmie(): Promise<ConfigOmie | null> {
+export async function getConfigOmie(): Promise<ConfigOmieSafe | null> {
   const { data, error } = await supabase
-    .from('config_omie')
+    .from('config_omie_safe' as any)
     .select('*')
     .limit(1)
     .maybeSingle()
   if (error) throw error
-  return data as ConfigOmie | null
+  return data as ConfigOmieSafe | null
 }
 
 export type SyncType = 'full' | 'vendedores' | 'clientes' | 'vendas'

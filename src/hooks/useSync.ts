@@ -59,7 +59,7 @@ export function useAutoSync() {
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (triggered.current || !config) return
+    if (triggered.current || !config || !config.has_credentials) return
 
     const interval = (config.sync_interval_hours ?? 6) * 60 * 60 * 1000
     const lastSync = config.ultimo_sync ? new Date(config.ultimo_sync).getTime() : 0

@@ -237,7 +237,7 @@ export function SyncPage() {
   const [syncPhase, setSyncPhase] = useState<string | null>(null)
 
   const isLoading = logsLoading || configLoading
-  const hasConfig = !!config
+  const hasConfig = config?.has_credentials ?? false
 
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['sync-logs'] })
