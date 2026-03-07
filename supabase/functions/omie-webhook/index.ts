@@ -46,42 +46,24 @@ interface OmieWebhookPayload {
 }
 
 // ----------------------------------------------------------------
-// Timing-safe string comparison to prevent timing attacks
+// Verify webhook authenticity via Omie appKey in the payload body.
+// Omie sends { appKey: "...", appHash: "..." } — we compare appKey
+// against the app_key stored in config_omie.
 // ----------------------------------------------------------------
-function timingSafeEqual(a: string | null, b: string): boolean {
-  if (!a) return false
-  if (a.length !== b.length) return false
-  const encoder = new TextEncoder()
-  const bufA = encoder.encode(a)
-  const bufB = encoder.encode(b)
-  let result = 0
-  for (let i = 0; i < bufA.length; i++) {
-    result |= bufA[i] ^ bufB[i]
-  }
-  return result === 0
-}
+async function verifyWebhookAppKey(payloadAppKey: string | undefined): Promise<boolean> {
+  if (!payloadAppKey) return false
 
-// ----------------------------------------------------------------
-// Verify webhook authenticity via Omie token
-// Omie sends token as query param: ?endpoint_token=<token>
-// We store it in config_omie.webhook_secret
-// ----------------------------------------------------------------
-async function verifyWebhookSecret(req: Request): Promise<boolean> {
   const supabase = getSupabaseAdmin()
   const { data } = await supabase
     .from('config_omie')
-    .select('webhook_secret')
+    .select('app_key')
     .limit(1)
     .single()
 
-  const storedSecret = data?.webhook_secret
-  if (!storedSecret) return false // Block if not configured
+  const storedAppKey = data?.app_key
+  if (!storedAppKey) return false
 
-  const url = new URL(req.url)
-  const queryToken = url.searchParams.get('endpoint_token')
-  const headerSecret = req.headers.get('x-webhook-secret')
-
-  return timingSafeEqual(queryToken, storedSecret) || timingSafeEqual(headerSecret, storedSecret)
+  return payloadAppKey === storedAppKey
 }
 
 // ----------------------------------------------------------------
@@ -218,8 +200,22 @@ async function processContaReceberEvent(
   if (!cliente) {
     return { success: false, detail: `Client omie_id=${codigoCliente} not found in DB — run sync first` }
   }
-  if (!cliente.vendedor_id) {
-    return { success: false, detail: `Client omie_id=${codigoCliente} (id=${cliente.id}) has no vendedor_id assigned` }
+
+  // Primary: conta.codigo_vendedor from event payload
+  // Fallback: cliente.vendedor_id (from recomendacoes.codigo_vendedor)
+  let vendedorId: string | null = cliente.vendedor_id
+  const contaCodigoVendedor = evt.codigo_vendedor as number | undefined
+  if (contaCodigoVendedor) {
+    const { data: vendedor } = await supabase
+      .from('vendedores')
+      .select('id')
+      .eq('omie_id', contaCodigoVendedor)
+      .single()
+    if (vendedor) vendedorId = vendedor.id
+  }
+
+  if (!vendedorId) {
+    return { success: false, detail: `No vendedor found for conta ${codigoLancamento} (conta.codigo_vendedor=${contaCodigoVendedor}, client vendedor_id=null)` }
   }
 
   // Parse date
@@ -257,7 +253,7 @@ async function processContaReceberEvent(
       {
         omie_id: codigoLancamento,
         cliente_id: cliente.id,
-        vendedor_id: cliente.vendedor_id,
+        vendedor_id: vendedorId,
         valor,
         mes,
         ano,
@@ -311,16 +307,17 @@ serve(async (req) => {
   const startTime = Date.now()
 
   try {
-    // Verify webhook secret
-    const isValid = await verifyWebhookSecret(req)
+    const payload = await req.json() as OmieWebhookPayload
+
+    // Verify webhook authenticity via appKey in the payload body
+    const isValid = await verifyWebhookAppKey(payload.appKey)
     if (!isValid) {
       return new Response(
-        JSON.stringify({ error: 'Invalid webhook secret' }),
+        JSON.stringify({ error: 'Invalid appKey' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
-    const payload = await req.json() as OmieWebhookPayload
     const topic = payload.topic
 
     if (!topic) {

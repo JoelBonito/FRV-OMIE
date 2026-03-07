@@ -64,9 +64,9 @@ export async function omieCall<T = unknown>(
         }),
       })
 
-      // Rate limit: retry
-      if (response.status === 429) {
-        lastError = 'Rate limit exceeded (429)'
+      // Rate limit: retry on 429 and 500 (Omie returns 500 for rate limit)
+      if (response.status === 429 || response.status === 500) {
+        lastError = `Rate limit or server error (${response.status})`
         continue
       }
 

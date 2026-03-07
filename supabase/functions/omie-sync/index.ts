@@ -20,6 +20,7 @@ import { getCorsHeaders } from '../_shared/cors.ts'
 import { requireAuth, requireRole, AuthError } from '../_shared/auth.ts'
 
 const PAGE_SIZE = 200  // Max per page to reduce API calls
+const PAGE_DELAY_MS = 600  // Delay between pages to avoid Omie rate limit
 
 // ----------------------------------------------------------------
 // Omie raw types
@@ -54,6 +55,7 @@ interface OmieCliente {
 interface OmieContaReceber {
   codigo_lancamento_omie: number
   codigo_cliente_fornecedor: number
+  codigo_vendedor?: number
   valor_documento: number
   data_vencimento: string
   data_registro: string
@@ -167,7 +169,7 @@ async function syncVendedores(
     pagina++
 
     if (pagina <= totalPages) {
-      await new Promise((r) => setTimeout(r, 300))
+      await new Promise((r) => setTimeout(r, PAGE_DELAY_MS))
     }
   }
 
@@ -258,7 +260,7 @@ async function syncClientes(
 
     // Rate limit: ~300ms between pages
     if (pagina <= totalPages) {
-      await new Promise((r) => setTimeout(r, 300))
+      await new Promise((r) => setTimeout(r, PAGE_DELAY_MS))
     }
   }
 
@@ -304,6 +306,16 @@ async function syncVendas(
     if (c.omie_id) {
       clienteMap.set(c.omie_id, { id: c.id, tipo: c.tipo, vendedor_id: c.vendedor_id })
     }
+  }
+
+  // Pre-load vendedor mapping (omie_id → UUID) for conta.codigo_vendedor resolution
+  const { data: allVendedores } = await supabase
+    .from('vendedores')
+    .select('id, omie_id')
+
+  const vendedorMap = new Map<number, string>()
+  for (const v of allVendedores || []) {
+    if (v.omie_id) vendedorMap.set(v.omie_id, v.id)
   }
 
   let pagina = 1
@@ -353,7 +365,14 @@ async function syncVendas(
         skipNoClient++
         continue
       }
-      if (!cliente.vendedor_id) {
+
+      // Primary: conta.codigo_vendedor (present on ~90% of VENR records)
+      // Fallback: cliente.vendedor_id (from recomendacoes.codigo_vendedor)
+      const vendedorId = conta.codigo_vendedor
+        ? vendedorMap.get(conta.codigo_vendedor) ?? cliente.vendedor_id
+        : cliente.vendedor_id
+
+      if (!vendedorId) {
         skipNoVendedor++
         continue
       }
@@ -391,7 +410,7 @@ async function syncVendas(
       records.push({
         omie_id: conta.codigo_lancamento_omie,
         cliente_id: cliente.id,
-        vendedor_id: cliente.vendedor_id,
+        vendedor_id: vendedorId,
         valor,
         mes,
         ano,
@@ -420,7 +439,7 @@ async function syncVendas(
     pagina++
 
     if (pagina <= totalPages) {
-      await new Promise((r) => setTimeout(r, 300))
+      await new Promise((r) => setTimeout(r, PAGE_DELAY_MS))
     }
   }
 
@@ -547,7 +566,7 @@ serve(async (req) => {
     }
 
     // Release lock and mark idle
-    await supabaseAdmin.rpc('release_sync_lock', { p_status: 'idle' })
+    await supabaseAdmin.rpc('release_sync_lock', { p_status: 'success' })
 
     return new Response(
       JSON.stringify({
