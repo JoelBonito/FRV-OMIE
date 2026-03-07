@@ -28,7 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: ROUTES.VENDEDORES, icon: UserCheck, label: 'Vendedores', minRole: 'gerente' },
   { to: ROUTES.VENDAS, icon: ShoppingCart, label: 'Vendas' },
   { to: ROUTES.CARTEIRAS, icon: Briefcase, label: 'Carteiras' },
-  { to: ROUTES.SYNC, icon: RefreshCw, label: 'Sync Omie', minRole: 'admin' },
+  { to: ROUTES.SYNC, icon: RefreshCw, label: 'Sync Omie', minRole: 'gerente' },
   { to: ROUTES.CONFIG, icon: Settings, label: 'Configurações', minRole: 'admin' },
 ]
 
