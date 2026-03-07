@@ -1,18 +1,35 @@
 import { useNavigate } from 'react-router-dom'
-import { PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, LogOut, RefreshCw, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useAuth } from '@/contexts/AuthContext'
 import { ROLE_LABELS } from '@/lib/roles'
 import { APP_NAME, ROUTES } from '@/lib/constants'
 import { ROLE_BADGE_CLASSES } from '@/lib/theme-constants'
 
+function formatTimeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'agora'
+  if (mins < 60) return `${mins}min atrás`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h atrás`
+  return `${Math.floor(hours / 24)}d atrás`
+}
+
 interface HeaderProps {
   collapsed: boolean
   onToggleSidebar: () => void
+  syncStatus?: string
+  lastSync?: string | null
 }
 
-export function Header({ collapsed, onToggleSidebar }: HeaderProps) {
+export function Header({ collapsed, onToggleSidebar, syncStatus, lastSync }: HeaderProps) {
   const { user, role, signOut } = useAuth()
   const navigate = useNavigate()
 
@@ -47,6 +64,37 @@ export function Header({ collapsed, onToggleSidebar }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Sync indicator */}
+        {syncStatus && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5">
+                {syncStatus === 'running' ? (
+                  <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                )}
+                <span className="text-xs text-muted-foreground hidden md:inline">
+                  {syncStatus === 'running'
+                    ? 'Sincronizando...'
+                    : lastSync
+                      ? formatTimeAgo(lastSync)
+                      : 'Sem sync'}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>
+                {syncStatus === 'running'
+                  ? 'Sincronização em andamento'
+                  : lastSync
+                    ? `Último sync: ${new Date(lastSync).toLocaleString('pt-BR')}`
+                    : 'Nenhuma sincronização realizada'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+
         {user && (
           <>
             <span className="text-sm font-medium text-muted-foreground hidden sm:inline">

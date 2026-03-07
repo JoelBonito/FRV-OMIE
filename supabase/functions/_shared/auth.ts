@@ -1,6 +1,7 @@
 /**
  * Auth helpers for Edge Functions.
  * Validates JWT and checks user role.
+ * Supports both user JWTs and service_role_key (for cron/automation).
  */
 
 import { getSupabaseAdmin } from './supabase-admin.ts'
@@ -12,6 +13,7 @@ export interface AuthUser {
 
 /**
  * Extract and validate JWT from Authorization header.
+ * Accepts user JWTs (from frontend) and service_role_key (from GitHub Actions/pg_cron).
  * Returns user info or throws.
  */
 export async function requireAuth(req: Request): Promise<AuthUser> {
@@ -21,6 +23,13 @@ export async function requireAuth(req: Request): Promise<AuthUser> {
   }
 
   const token = authHeader.replace('Bearer ', '')
+
+  // Check if token is the service_role_key (used by GitHub Actions cron, pg_cron)
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (serviceRoleKey && token === serviceRoleKey) {
+    return { userId: 'service_role', role: 'admin' }
+  }
+
   const supabase = getSupabaseAdmin()
   const { data: { user }, error } = await supabase.auth.getUser(token)
 

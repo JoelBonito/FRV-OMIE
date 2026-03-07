@@ -15,7 +15,6 @@ import {
   getSupabaseAdmin,
   getOmieCredentials,
   logSync,
-  updateSyncStatus,
 } from '../_shared/supabase-admin.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
 import { requireAuth, requireRole, AuthError } from '../_shared/auth.ts'

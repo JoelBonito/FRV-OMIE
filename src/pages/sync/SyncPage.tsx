@@ -308,7 +308,11 @@ export function SyncPage() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      toast.error(`Erro no sync: ${message}`)
+      if (message.includes('409') || message.includes('already in progress')) {
+        toast.warning('Outra sincronização já está em andamento no servidor. Aguarde.')
+      } else {
+        toast.error(`Erro no sync: ${message}`)
+      }
     } finally {
       releaseSyncLock()
       setIsSyncing(false)
