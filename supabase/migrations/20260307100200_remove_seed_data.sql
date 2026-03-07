@@ -4,6 +4,12 @@
 -- Order: vendas -> clientes -> vendedores (respect FKs)
 -- =============================================================
 
+-- Delete seed carteira_historico (references seed clientes and vendedores)
+DELETE FROM frv_omie.carteira_historico
+WHERE cliente_id IN (
+  SELECT id FROM frv_omie.clientes WHERE id::text LIKE 'c2000000-%'
+);
+
 -- Delete seed vendas (all vendas linked to seed clientes with UUID prefix c2000000-)
 DELETE FROM frv_omie.vendas
 WHERE cliente_id IN (

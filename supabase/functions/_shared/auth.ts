@@ -24,12 +24,15 @@ export async function requireAuth(req: Request): Promise<AuthUser> {
 
   const token = authHeader.replace('Bearer ', '')
 
-  // Check if token is the service_role_key (used by GitHub Actions cron, pg_cron)
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  if (serviceRoleKey && token === serviceRoleKey) {
+  // Decode JWT payload to check role (works for both user and service_role tokens)
+  const jwtRole = decodeJwtRole(token)
+
+  // service_role = automation (GitHub Actions, pg_cron, direct service_role calls)
+  if (jwtRole === 'service_role') {
     return { userId: 'service_role', role: 'admin' }
   }
 
+  // For user tokens, validate via Supabase Auth
   const supabase = getSupabaseAdmin()
   const { data: { user }, error } = await supabase.auth.getUser(token)
 
@@ -47,6 +50,21 @@ export async function requireAuth(req: Request): Promise<AuthUser> {
 export function requireRole(user: AuthUser, allowed: string[]): void {
   if (!allowed.includes(user.role)) {
     throw new AuthError(`Role '${user.role}' not authorized. Required: ${allowed.join(', ')}`, 403)
+  }
+}
+
+/**
+ * Decode JWT payload without verification (role check only).
+ * The Supabase gateway already validates the JWT signature.
+ */
+function decodeJwtRole(token: string): string | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const payload = JSON.parse(atob(parts[1]))
+    return payload.role || null
+  } catch {
+    return null
   }
 }
 
