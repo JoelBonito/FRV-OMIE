@@ -17,11 +17,8 @@ import {
   logSync,
   updateSyncStatus,
 } from '../_shared/supabase-admin.ts'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders } from '../_shared/cors.ts'
+import { requireAuth, requireRole, AuthError } from '../_shared/auth.ts'
 
 const PAGE_SIZE = 200  // Max per page to reduce API calls
 
@@ -390,6 +387,8 @@ async function syncVendas(
 // Main handler
 // ----------------------------------------------------------------
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -397,6 +396,10 @@ serve(async (req) => {
   const startTime = Date.now()
 
   try {
+    // Require admin or gerente role
+    const user = await requireAuth(req)
+    requireRole(user, ['admin', 'gerente'])
+
     const body = await req.json().catch(() => ({})) as {
       type?: string
       maxPages?: number
@@ -407,7 +410,16 @@ serve(async (req) => {
     const maxPages = body.maxPages || 50
 
     const credentials = await getOmieCredentials()
-    await updateSyncStatus(credentials.id, 'running')
+    const supabaseAdmin = getSupabaseAdmin()
+
+    // Acquire server-side sync lock
+    const { data: lockAcquired } = await supabaseAdmin.rpc('acquire_sync_lock')
+    if (!lockAcquired) {
+      return new Response(
+        JSON.stringify({ status: 'skipped', reason: 'Sync already in progress' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
 
     const results: Record<string, unknown> = {}
 
@@ -468,7 +480,8 @@ serve(async (req) => {
       })
     }
 
-    await updateSyncStatus(credentials.id, 'idle')
+    // Release lock and mark idle
+    await supabaseAdmin.rpc('release_sync_lock', { p_status: 'idle' })
 
     return new Response(
       JSON.stringify({
@@ -480,11 +493,18 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (err) {
+    if (err instanceof AuthError) {
+      return new Response(
+        JSON.stringify({ status: 'error', error: err.message }),
+        { status: err.statusCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
     const message = err instanceof Error ? err.message : String(err)
 
     try {
-      const credentials = await getOmieCredentials()
-      await updateSyncStatus(credentials.id, 'error')
+      const sa = getSupabaseAdmin()
+      await sa.rpc('release_sync_lock', { p_status: 'error' })
     } catch { /* ignore */ }
 
     return new Response(

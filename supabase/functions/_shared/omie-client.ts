@@ -1,9 +1,12 @@
 /**
  * Shared Omie API client for Edge Functions.
- * Handles authentication, pagination, rate limiting, and error handling.
+ * Handles authentication, pagination, rate limiting, retry/backoff, and error handling.
  */
 
 const OMIE_BASE_URL = 'https://app.omie.com.br/api/v1'
+const MAX_RETRIES = 3
+const BASE_DELAY_MS = 500
+const PAGE_SLEEP_MS = 400
 
 export interface OmieCredentials {
   app_key: string
@@ -32,53 +35,85 @@ export interface OmiePaginatedResult<T> {
 }
 
 /**
- * Single API call to Omie (JSON-RPC via POST).
+ * Single API call to Omie (JSON-RPC via POST) with retry and exponential backoff.
+ * Retries on: HTTP 429, network errors, Omie SOAP faults with timeout.
  */
 export async function omieCall<T = unknown>(
   credentials: OmieCredentials,
   request: OmieRequestParams,
 ): Promise<OmieResponse<T>> {
-  const startTime = Date.now()
+  let lastError: string | undefined
 
-  try {
-    const response = await fetch(`${OMIE_BASE_URL}/${request.endpoint}/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        app_key: credentials.app_key,
-        app_secret: credentials.app_secret,
-        call: request.call,
-        param: [request.params],
-      }),
-    })
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1) + Math.random() * 200
+      await sleep(delay)
+    }
 
-    const data = await response.json() as T & { faultstring?: string; faultcode?: string }
-    const duration_ms = Date.now() - startTime
+    const startTime = Date.now()
 
-    // Omie returns 200 even on errors, check faultstring
-    if (data && typeof data === 'object' && 'faultstring' in data) {
-      return {
-        data,
-        status: 'error',
-        duration_ms,
-        error: `${(data as Record<string, unknown>).faultcode}: ${(data as Record<string, unknown>).faultstring}`,
+    try {
+      const response = await fetch(`${OMIE_BASE_URL}/${request.endpoint}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          app_key: credentials.app_key,
+          app_secret: credentials.app_secret,
+          call: request.call,
+          param: [request.params],
+        }),
+      })
+
+      // Rate limit: retry
+      if (response.status === 429) {
+        lastError = 'Rate limit exceeded (429)'
+        continue
+      }
+
+      const data = await response.json() as T & { faultstring?: string; faultcode?: string }
+      const duration_ms = Date.now() - startTime
+
+      // Omie returns 200 even on errors, check faultstring
+      if (data && typeof data === 'object' && 'faultstring' in data) {
+        const faultCode = String((data as Record<string, unknown>).faultcode || '')
+        const faultString = String((data as Record<string, unknown>).faultstring || '')
+
+        // Transient errors that should be retried
+        if (faultCode.includes('SOAP-ENV') || faultString.toLowerCase().includes('timeout')) {
+          lastError = `${faultCode}: ${faultString}`
+          continue
+        }
+
+        // Non-transient Omie error — don't retry
+        return {
+          data,
+          status: 'error',
+          duration_ms,
+          error: `${faultCode}: ${faultString}`,
+        }
+      }
+
+      return { data, status: 'success', duration_ms }
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err)
+      if (attempt === MAX_RETRIES) {
+        return {
+          data: {} as T,
+          status: 'error',
+          duration_ms: Date.now() - startTime,
+          error: `After ${MAX_RETRIES} retries: ${lastError}`,
+        }
       }
     }
-
-    return { data, status: 'success', duration_ms }
-  } catch (err) {
-    return {
-      data: {} as T,
-      status: 'error',
-      duration_ms: Date.now() - startTime,
-      error: err instanceof Error ? err.message : String(err),
-    }
   }
+
+  return { data: {} as T, status: 'error', duration_ms: 0, error: lastError || 'Max retries exceeded' }
 }
 
 /**
  * Fetch ALL pages from a paginated Omie endpoint.
  * Automatically handles pagination and rate limiting (sleep between pages).
+ * On page error: retries via omieCall internally, then continues to next page.
  */
 export async function omieFetchAll<TItem>(
   credentials: OmieCredentials,
@@ -116,9 +151,9 @@ export async function omieFetchAll<TItem>(
 
     pagina++
 
-    // Rate limit: max 4 req/sec → sleep 300ms between pages
+    // Rate limit: ~400ms between pages (240 req/min = safe margin)
     if (pagina <= totalPages) {
-      await sleep(300)
+      await sleep(PAGE_SLEEP_MS)
     }
   }
 
@@ -135,7 +170,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 // ----------------------------------------------------------------
-// Tag → tipo mapping for clients
+// Tag -> tipo mapping for clients
 // ----------------------------------------------------------------
 const TAG_TO_TIPO: Record<string, string> = {
   'SINDICO': 'sindico',

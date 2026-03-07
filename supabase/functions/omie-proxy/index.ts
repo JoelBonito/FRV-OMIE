@@ -11,19 +11,20 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
 import { omieCall } from '../_shared/omie-client.ts'
 import { getOmieCredentials, logSync } from '../_shared/supabase-admin.ts'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders } from '../_shared/cors.ts'
+import { requireAuth, requireRole, AuthError } from '../_shared/auth.ts'
 
 serve(async (req) => {
-  // Handle CORS preflight
+  const corsHeaders = getCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    // Require admin or gerente role
+    const user = await requireAuth(req)
+    requireRole(user, ['admin', 'gerente'])
     const { endpoint, call, params } = await req.json() as {
       endpoint: string
       call: string
@@ -64,10 +65,17 @@ serve(async (req) => {
       },
     )
   } catch (err) {
+    const corsH = getCorsHeaders(req)
+    if (err instanceof AuthError) {
+      return new Response(
+        JSON.stringify({ error: err.message }),
+        { status: err.statusCode, headers: { ...corsH, 'Content-Type': 'application/json' } },
+      )
+    }
     const message = err instanceof Error ? err.message : String(err)
     return new Response(
       JSON.stringify({ error: message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: 500, headers: { ...corsH, 'Content-Type': 'application/json' } },
     )
   }
 })

@@ -28,11 +28,7 @@ import {
   getOmieCredentials,
   logSync,
 } from '../_shared/supabase-admin.ts'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-secret',
-}
+import { getWebhookCorsHeaders } from '../_shared/cors.ts'
 
 // ----------------------------------------------------------------
 // Webhook payload types
@@ -50,6 +46,22 @@ interface OmieWebhookPayload {
 }
 
 // ----------------------------------------------------------------
+// Timing-safe string comparison to prevent timing attacks
+// ----------------------------------------------------------------
+function timingSafeEqual(a: string | null, b: string): boolean {
+  if (!a) return false
+  if (a.length !== b.length) return false
+  const encoder = new TextEncoder()
+  const bufA = encoder.encode(a)
+  const bufB = encoder.encode(b)
+  let result = 0
+  for (let i = 0; i < bufA.length; i++) {
+    result |= bufA[i] ^ bufB[i]
+  }
+  return result === 0
+}
+
+// ----------------------------------------------------------------
 // Verify webhook authenticity via Omie token
 // Omie sends token as query param: ?endpoint_token=<token>
 // We store it in config_omie.webhook_secret
@@ -63,14 +75,13 @@ async function verifyWebhookSecret(req: Request): Promise<boolean> {
     .single()
 
   const storedSecret = data?.webhook_secret
-  if (!storedSecret) return true // No secret configured = accept all (dev mode)
+  if (!storedSecret) return false // Block if not configured
 
-  // Omie sends token as query param or header
   const url = new URL(req.url)
   const queryToken = url.searchParams.get('endpoint_token')
   const headerSecret = req.headers.get('x-webhook-secret')
 
-  return queryToken === storedSecret || headerSecret === storedSecret
+  return timingSafeEqual(queryToken, storedSecret) || timingSafeEqual(headerSecret, storedSecret)
 }
 
 // ----------------------------------------------------------------
@@ -270,7 +281,7 @@ function parseTopic(topic: string): { entity: string; action: string } | null {
   // - "Financas.ContaReceber.Incluida"
   // - "ClienteFornecedor.Alterado"
   const parts = topic.split('.')
-  if (parts.length < 3) return null
+  if (parts.length < 2) return null
 
   const actionRaw = parts[parts.length - 1]
   const entity = parts.slice(0, -1).join('.')
@@ -288,6 +299,8 @@ function parseTopic(topic: string): { entity: string; action: string } | null {
 // Main handler
 // ----------------------------------------------------------------
 serve(async (req) => {
+  const corsHeaders = getWebhookCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }

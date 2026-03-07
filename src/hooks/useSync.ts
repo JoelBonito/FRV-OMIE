@@ -51,45 +51,56 @@ export function useTriggerSync() {
 /**
  * Auto-sync: triggers a full sequential sync if the last sync was more than
  * `intervalHours` ago. Works on any Supabase plan (no pg_cron needed).
- * Runs once on mount. Respects global sync lock to avoid race conditions.
+ * Runs on mount + checks every 30 min for users with dashboard open all day.
+ * Uses server-side lock (409 response) as primary protection.
  */
 export function useAutoSync() {
   const { data: config } = useConfigOmie()
   const triggered = useRef(false)
   const queryClient = useQueryClient()
+  const autoSyncingRef = useRef(false)
 
   useEffect(() => {
-    if (triggered.current || !config || !config.has_credentials) return
+    if (!config || !config.has_credentials) return
 
-    const interval = (config.sync_interval_hours ?? 6) * 60 * 60 * 1000
-    const lastSync = config.ultimo_sync ? new Date(config.ultimo_sync).getTime() : 0
-    const elapsed = Date.now() - lastSync
+    const runAutoSync = async () => {
+      if (autoSyncingRef.current) return
+      if (config.status_sync === 'running') return
 
-    if (elapsed > interval && config.status_sync !== 'running') {
-      triggered.current = true
+      const interval = (config.sync_interval_hours ?? 6) * 60 * 60 * 1000
+      const lastSync = config.ultimo_sync ? new Date(config.ultimo_sync).getTime() : 0
+      const elapsed = Date.now() - lastSync
 
-      // Acquire lock — if another sync is already running, skip
-      if (!acquireSyncLock()) return
+      if (elapsed <= interval) return
 
-      const stages: Array<'vendedores' | 'clientes' | 'vendas'> = ['vendedores', 'clientes', 'vendas']
+      autoSyncingRef.current = true
+      const stages: SyncType[] = ['vendedores', 'clientes', 'vendas']
 
-      ;(async () => {
-        try {
-          for (const stage of stages) {
+      try {
+        for (const stage of stages) {
+          try {
             await triggerSync(stage, 50)
+          } catch (err) {
+            // 409 = server lock active, stop trying
+            if (err instanceof Error && err.message.includes('409')) break
           }
-        } catch {
-          // Silent fail — user can check sync page for errors
-        } finally {
-          releaseSyncLock()
-          queryClient.invalidateQueries({ queryKey: ['sync-logs'] })
-          queryClient.invalidateQueries({ queryKey: ['config-omie'] })
-          queryClient.invalidateQueries({ queryKey: ['vendedores'] })
-          queryClient.invalidateQueries({ queryKey: ['clientes'] })
-          queryClient.invalidateQueries({ queryKey: ['vendas'] })
-          queryClient.invalidateQueries({ queryKey: ['dashboard'] })
         }
-      })()
+      } finally {
+        autoSyncingRef.current = false
+        queryClient.invalidateQueries()
+      }
     }
+
+    // Run once on mount
+    if (!triggered.current) {
+      triggered.current = true
+      runAutoSync()
+    }
+
+    // Check every 30 minutes for long-lived sessions
+    const timer = setInterval(runAutoSync, 30 * 60 * 1000)
+    return () => clearInterval(timer)
   }, [config, queryClient])
+
+  return { isSyncing: autoSyncingRef.current }
 }

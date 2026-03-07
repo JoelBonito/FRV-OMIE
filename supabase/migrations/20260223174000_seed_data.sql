@@ -1,3 +1,6 @@
+-- ⚠ DEV ONLY: This seed data was superseded by migration 20260307100200_remove_seed_data.sql
+-- Do NOT re-run in production. Data below is fictitious and for development purposes only.
+
 -- =============================================================
 -- Seed Data: FRV Omie Dashboard de Vendas
 -- 4 vendedores (real names), 40 clientes, 8 months of sales

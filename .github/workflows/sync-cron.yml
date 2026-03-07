@@ -1,0 +1,60 @@
+name: Omie Sync (Scheduled)
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Sync Vendedores
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/omie-sync" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"type": "vendedores", "maxPages": 50}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "Status: $HTTP_CODE"
+          echo "$BODY" | head -c 500
+          if [ "$HTTP_CODE" -ge 500 ]; then exit 1; fi
+
+      - name: Wait between syncs
+        run: sleep 45
+
+      - name: Sync Clientes
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/omie-sync" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"type": "clientes", "maxPages": 50}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "Status: $HTTP_CODE"
+          echo "$BODY" | head -c 500
+          if [ "$HTTP_CODE" -ge 500 ]; then exit 1; fi
+
+      - name: Wait between syncs
+        run: sleep 45
+
+      - name: Sync Vendas
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/omie-sync" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"type": "vendas", "maxPages": 50}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "Status: $HTTP_CODE"
+          echo "$BODY" | head -c 500
+          if [ "$HTTP_CODE" -ge 500 ]; then exit 1; fi
+
+      - name: Summary
+        if: always()
+        run: echo "Sync workflow completed at $(date -u)"

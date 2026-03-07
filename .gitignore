@@ -25,6 +25,9 @@ dist/
 # Claude Code local settings (may contain API keys)
 .claude/settings.local.json
 
+# Sensitive data files
+planilha/
+
 # Vercel
 .vercel/
 
