@@ -6,7 +6,8 @@
 const OMIE_BASE_URL = 'https://app.omie.com.br/api/v1'
 const MAX_RETRIES = 3
 const BASE_DELAY_MS = 500
-const PAGE_SLEEP_MS = 400
+const PAGE_SLEEP_MS = 800  // 800ms between pages (was 400ms — Omie rate limits aggressively)
+const RATE_LIMIT_DELAY_MS = 4000  // 4s backoff when Omie returns "chave inválida" (disguised rate limit)
 
 export interface OmieCredentials {
   app_key: string
@@ -64,9 +65,28 @@ export async function omieCall<T = unknown>(
         }),
       })
 
-      // Rate limit: retry on 429 and 500 (Omie returns 500 for rate limit)
-      if (response.status === 429 || response.status === 500) {
-        lastError = `Rate limit or server error (${response.status})`
+      // Rate limit: retry on 429 with standard backoff
+      if (response.status === 429) {
+        lastError = `Rate limit (429)`
+        continue
+      }
+
+      // HTTP 500: parse body to distinguish rate limit from real errors
+      if (response.status === 500) {
+        let body500: Record<string, unknown> = {}
+        try { body500 = await response.json() } catch { /* ignore parse error */ }
+        const errMsg = String(body500.result || body500.faultstring || '')
+
+        // "Chave de acesso inválida" on 500 = Omie disguised rate limit
+        if (errMsg.toLowerCase().includes('chave de acesso')) {
+          lastError = `Rate limit disguised as auth error: ${errMsg}`
+          // Longer backoff for this specific case
+          await sleep(RATE_LIMIT_DELAY_MS)
+          continue
+        }
+
+        // Other 500s: retry with standard backoff
+        lastError = `Server error (500): ${errMsg || 'unknown'}`
         continue
       }
 
@@ -77,6 +97,13 @@ export async function omieCall<T = unknown>(
       if (data && typeof data === 'object' && 'faultstring' in data) {
         const faultCode = String((data as Record<string, unknown>).faultcode || '')
         const faultString = String((data as Record<string, unknown>).faultstring || '')
+
+        // "Chave inválida" on 200 = also possible rate limit
+        if (faultString.toLowerCase().includes('chave de acesso')) {
+          lastError = `Rate limit (200): ${faultString}`
+          await sleep(RATE_LIMIT_DELAY_MS)
+          continue
+        }
 
         // Transient errors that should be retried
         if (faultCode.includes('SOAP-ENV') || faultString.toLowerCase().includes('timeout')) {

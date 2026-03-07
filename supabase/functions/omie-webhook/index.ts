@@ -215,22 +215,33 @@ async function processContaReceberEvent(
   }
 
   if (!vendedorId) {
-    return { success: false, detail: `No vendedor found for conta ${codigoLancamento} (conta.codigo_vendedor=${contaCodigoVendedor}, client vendedor_id=null)` }
+    // Skip silently — same as omie-sync (vendedor_id is NOT NULL in DB)
+    return { success: true, detail: `Skipped conta ${codigoLancamento}: no vendedor (conta.codigo_vendedor=${contaCodigoVendedor || 0}, client vendedor_id=null)` }
   }
 
-  // Parse date
+  // Parse date — webhook sends ISO 8601, sync API sends DD/MM/YYYY
   const dataStr = (evt.data_vencimento as string) || (evt.data_registro as string) || ''
   let mes = new Date().getMonth() + 1
   let ano = new Date().getFullYear()
   let dataVenda: string | null = null
 
   if (dataStr) {
-    const parts = dataStr.split('/')
-    if (parts.length === 3) {
-      const day = parseInt(parts[0])
-      mes = parseInt(parts[1])
-      ano = parseInt(parts[2])
+    // Try DD/MM/YYYY first (sync API format)
+    const slashParts = dataStr.split('/')
+    if (slashParts.length === 3) {
+      const day = parseInt(slashParts[0])
+      mes = parseInt(slashParts[1])
+      ano = parseInt(slashParts[2])
       dataVenda = `${ano}-${String(mes).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    } else {
+      // Fallback: ISO 8601 (webhook format: "2026-03-02T00:00:00-03:00")
+      const isoMatch = dataStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
+      if (isoMatch) {
+        ano = parseInt(isoMatch[1])
+        mes = parseInt(isoMatch[2])
+        const day = parseInt(isoMatch[3])
+        dataVenda = `${ano}-${String(mes).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      }
     }
   }
 
@@ -240,7 +251,8 @@ async function processContaReceberEvent(
   }
 
   let status: 'faturado' | 'pendente' | 'cancelado' = 'pendente'
-  const statusOmie = ((evt.status_titulo as string) || '').toUpperCase()
+  // Webhook sends "situacao", sync API sends "status_titulo" — check both
+  const statusOmie = ((evt.status_titulo as string) || (evt.situacao as string) || '').toUpperCase()
   if (statusOmie === 'LIQUIDADO' || statusOmie === 'RECEBIDO') {
     status = 'faturado'
   } else if (statusOmie === 'CANCELADO') {
