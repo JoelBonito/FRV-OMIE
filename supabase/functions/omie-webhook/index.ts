@@ -215,8 +215,11 @@ async function processContaReceberEvent(
     .eq('omie_id', codigoCliente)
     .single()
 
-  if (!cliente?.vendedor_id) {
-    return { success: false, detail: `Client ${codigoCliente} not found or no vendedor_id` }
+  if (!cliente) {
+    return { success: false, detail: `Client omie_id=${codigoCliente} not found in DB — run sync first` }
+  }
+  if (!cliente.vendedor_id) {
+    return { success: false, detail: `Client omie_id=${codigoCliente} (id=${cliente.id}) has no vendedor_id assigned` }
   }
 
   // Parse date

@@ -79,7 +79,7 @@ export function useAutoSync() {
       try {
         for (const stage of stages) {
           try {
-            await triggerSync(stage, 50)
+            await triggerSync(stage)
           } catch (err) {
             // 409 = server lock active, stop trying
             if (err instanceof Error && err.message.includes('409')) break

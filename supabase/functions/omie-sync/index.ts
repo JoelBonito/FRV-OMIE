@@ -268,10 +268,30 @@ async function syncClientes(
 // ----------------------------------------------------------------
 // Sync Vendas — page by page with bulk upsert
 // ----------------------------------------------------------------
+interface SyncVendasOptions {
+  maxPages?: number
+  /** Date filter: registration date FROM (DD/MM/YYYY) */
+  dateFrom?: string
+  /** Date filter: registration date TO (DD/MM/YYYY) */
+  dateTo?: string
+}
+
+interface SyncVendasResult {
+  criados: number
+  atualizados: number
+  processados: number
+  errors: string[]
+  skipped: { noClient: number; noVendedor: number; zeroValue: number; total: number }
+  totalApiRecords: number
+  pagesProcessed: number
+  totalPages: number
+}
+
 async function syncVendas(
   credentials: OmieCredentials,
-  maxPages = 999,
-): Promise<{ criados: number; atualizados: number; processados: number; errors: string[] }> {
+  options: SyncVendasOptions = {},
+): Promise<SyncVendasResult> {
+  const { maxPages = 999, dateFrom, dateTo } = options
   const supabase = getSupabaseAdmin()
 
   // Pre-load client mapping (omie_id → {id, tipo, vendedor_id})
@@ -292,12 +312,23 @@ async function syncVendas(
   let atualizados = 0
   let processados = 0
   const errors: string[] = []
+  let skipNoClient = 0
+  let skipNoVendedor = 0
+  let skipZeroValue = 0
+  let totalApiRecords = 0
+
+  // Build API params with optional date filters
+  const baseParams: Record<string, unknown> = {
+    registros_por_pagina: PAGE_SIZE,
+  }
+  if (dateFrom) baseParams.filtrar_por_registro_de = dateFrom
+  if (dateTo) baseParams.filtrar_por_registro_ate = dateTo
 
   while (pagina <= Math.min(totalPages, maxPages)) {
     const result = await omieCall<Record<string, unknown>>(credentials, {
       endpoint: 'financas/contareceber',
       call: 'ListarContasReceber',
-      params: { pagina, registros_por_pagina: PAGE_SIZE },
+      params: { ...baseParams, pagina },
     })
 
     if (result.status === 'error') {
@@ -307,14 +338,25 @@ async function syncVendas(
 
     totalPages = (result.data.total_de_paginas as number) || 1
     const items = (result.data.conta_receber_cadastro as OmieContaReceber[]) || []
+    totalApiRecords += items.length
 
     // Build batch records
     const records = []
     for (const conta of items) {
-      if (!conta.codigo_cliente_fornecedor) continue
+      if (!conta.codigo_cliente_fornecedor) {
+        skipNoClient++
+        continue
+      }
 
       const cliente = clienteMap.get(conta.codigo_cliente_fornecedor)
-      if (!cliente || !cliente.vendedor_id) continue
+      if (!cliente) {
+        skipNoClient++
+        continue
+      }
+      if (!cliente.vendedor_id) {
+        skipNoVendedor++
+        continue
+      }
 
       // Parse date (format: dd/mm/yyyy)
       const dataStr = conta.data_vencimento || conta.data_registro
@@ -333,7 +375,10 @@ async function syncVendas(
       }
 
       const valor = conta.valor_documento || (conta.categorias?.[0]?.valor) || 0
-      if (valor <= 0) continue
+      if (valor <= 0) {
+        skipZeroValue++
+        continue
+      }
 
       let status: 'faturado' | 'pendente' | 'cancelado' = 'pendente'
       const statusOmie = (conta.status_titulo || '').toUpperCase()
@@ -379,7 +424,14 @@ async function syncVendas(
     }
   }
 
-  return { criados, atualizados, processados, errors }
+  const skipped = {
+    noClient: skipNoClient,
+    noVendedor: skipNoVendedor,
+    zeroValue: skipZeroValue,
+    total: skipNoClient + skipNoVendedor + skipZeroValue,
+  }
+
+  return { criados, atualizados, processados, errors, skipped, totalApiRecords, pagesProcessed: pagina - 1, totalPages }
 }
 
 // ----------------------------------------------------------------
@@ -402,11 +454,15 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({})) as {
       type?: string
       maxPages?: number
+      /** Date filter FROM for vendas (DD/MM/YYYY) */
+      dateFrom?: string
+      /** Date filter TO for vendas (DD/MM/YYYY) */
+      dateTo?: string
     }
     const syncType = body.type || 'full'
-    // Default maxPages: enough for ~3000 clients in 200/page = 16 pages
-    // Edge Function timeout is ~60s, each page ~1s = safe up to ~50 pages
-    const maxPages = body.maxPages || 50
+    // Default maxPages: 999 (effectively unlimited). Frontend chains
+    // vendedores → clientes → vendas sequentially to avoid 60s timeout.
+    const maxPages = body.maxPages || 999
 
     const credentials = await getOmieCredentials()
     const supabaseAdmin = getSupabaseAdmin()
@@ -463,9 +519,14 @@ serve(async (req) => {
     // 3) Sync vendas (contas a receber — uses cliente+vendedor maps)
     if (syncType === 'full' || syncType === 'vendas') {
       const t0 = Date.now()
-      const vendasResult = await syncVendas(credentials, maxPages)
+      const vendasResult = await syncVendas(credentials, {
+        maxPages,
+        dateFrom: body.dateFrom,
+        dateTo: body.dateTo,
+      })
       results.vendas = vendasResult
 
+      const hasIssues = vendasResult.errors.length > 0 || vendasResult.skipped.total > 0
       await logSync({
         tipo: syncType === 'full' ? 'full_sync' : 'incremental',
         endpoint: '/financas/contareceber/',
@@ -474,7 +535,13 @@ serve(async (req) => {
         registros_processados: vendasResult.processados,
         registros_criados: vendasResult.criados,
         registros_atualizados: vendasResult.atualizados,
-        erros: vendasResult.errors.length > 0 ? { errors: vendasResult.errors } : null,
+        erros: hasIssues ? {
+          errors: vendasResult.errors,
+          skipped: vendasResult.skipped,
+          totalApiRecords: vendasResult.totalApiRecords,
+          pagesProcessed: vendasResult.pagesProcessed,
+          totalPages: vendasResult.totalPages,
+        } : null,
         duracao_ms: Date.now() - t0,
       })
     }

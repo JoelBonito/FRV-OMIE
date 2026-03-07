@@ -269,7 +269,7 @@ export function SyncPage() {
 
         for (const stage of stages) {
           setSyncPhase(stage)
-          const result = await triggerSync(stage, 50)
+          const result = await triggerSync(stage)
           results[stage] = result
 
           const stageData = result.results[stage]
@@ -295,7 +295,7 @@ export function SyncPage() {
         )
       } else {
         setSyncPhase(syncMode)
-        const result = await triggerSync(syncMode, 50)
+        const result = await triggerSync(syncMode)
         const key = syncMode as 'vendedores' | 'clientes' | 'vendas'
         const stageData = result.results[key]
 

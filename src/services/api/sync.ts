@@ -38,13 +38,27 @@ export interface SyncResult {
   error?: string
 }
 
+export interface TriggerSyncOptions {
+  type?: SyncType
+  maxPages?: number
+  /** Date filter FROM for vendas (DD/MM/YYYY) */
+  dateFrom?: string
+  /** Date filter TO for vendas (DD/MM/YYYY) */
+  dateTo?: string
+}
+
 export async function triggerSync(
   type: SyncType = 'full',
   maxPages?: number,
+  dateFrom?: string,
+  dateTo?: string,
 ): Promise<SyncResult> {
-  const { data, error } = await supabase.functions.invoke('omie-sync', {
-    body: { type, ...(maxPages ? { maxPages } : {}) },
-  })
+  const body: Record<string, unknown> = { type }
+  if (maxPages) body.maxPages = maxPages
+  if (dateFrom) body.dateFrom = dateFrom
+  if (dateTo) body.dateTo = dateTo
+
+  const { data, error } = await supabase.functions.invoke('omie-sync', { body })
   if (error) throw error
   return data as SyncResult
 }
