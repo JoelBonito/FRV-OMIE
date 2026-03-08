@@ -35,17 +35,22 @@ import {
 } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { useSyncLogs, useConfigOmie, acquireSyncLock, releaseSyncLock, isSyncLocked } from '@/hooks/useSync'
-import { triggerSync, type SyncResult } from '@/services/api/sync'
+import { triggerSync, type SyncResult, type SyncMode } from '@/services/api/sync'
 import type { Tables } from '@/lib/types/database'
 
 type SyncLog = Tables<'sync_logs'>
-type SyncMode = 'full' | 'vendedores' | 'clientes' | 'vendas'
+type SyncScope = 'full' | 'vendedores' | 'clientes' | 'vendas'
 
-const SYNC_LABELS: Record<SyncMode, string> = {
-  full: 'Full (Sequencial)',
+const SCOPE_LABELS: Record<SyncScope, string> = {
+  full: 'Completo (Sequencial)',
   vendedores: 'Apenas Vendedores',
   clientes: 'Apenas Clientes',
   vendas: 'Apenas Vendas',
+}
+
+const MODE_LABELS: Record<SyncMode, string> = {
+  incremental: 'Incremental (novos)',
+  full: 'Full (tudo)',
 }
 
 const PHASE_LABELS: Record<string, string> = {
@@ -232,7 +237,8 @@ export function SyncPage() {
   const { data: logs, isLoading: logsLoading } = useSyncLogs()
   const { data: config, isLoading: configLoading } = useConfigOmie()
 
-  const [syncMode, setSyncMode] = useState<SyncMode>('full')
+  const [syncScope, setSyncScope] = useState<SyncScope>('full')
+  const [syncMode, setSyncMode] = useState<SyncMode>('incremental')
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncPhase, setSyncPhase] = useState<string | null>(null)
 
@@ -262,14 +268,14 @@ export function SyncPage() {
     const startTime = Date.now()
 
     try {
-      if (syncMode === 'full') {
+      if (syncScope === 'full') {
         // Sequential sync to avoid 60s Edge Function timeout
         const stages = ['vendedores', 'clientes', 'vendas'] as const
         const results: Partial<Record<typeof stages[number], SyncResult>> = {}
 
         for (const stage of stages) {
           setSyncPhase(stage)
-          const result = await triggerSync(stage)
+          const result = await triggerSync(stage, syncMode)
           results[stage] = result
 
           const stageData = result.results[stage]
@@ -288,19 +294,19 @@ export function SyncPage() {
         const vd = results.vendas?.results.vendas
 
         toast.success(
-          `Sync completo em ${elapsed}s — ` +
+          `Sync ${syncMode === 'incremental' ? 'incremental' : 'full'} em ${elapsed}s — ` +
           `Vendedores: ${ve?.processados ?? 0} | ` +
           `Clientes: ${cl?.processados ?? 0} | ` +
           `Vendas: ${vd?.processados ?? 0}`,
         )
       } else {
-        setSyncPhase(syncMode)
-        const result = await triggerSync(syncMode)
-        const key = syncMode as 'vendedores' | 'clientes' | 'vendas'
+        setSyncPhase(syncScope)
+        const result = await triggerSync(syncScope, syncMode)
+        const key = syncScope as 'vendedores' | 'clientes' | 'vendas'
         const stageData = result.results[key]
 
         toast.success(
-          `Sync ${syncMode} em ${(result.duration_ms / 1000).toFixed(1)}s — ` +
+          `Sync ${syncScope} em ${(result.duration_ms / 1000).toFixed(1)}s — ` +
           `${stageData?.processados ?? 0} processados, ` +
           `${stageData?.criados ?? 0} criados, ` +
           `${stageData?.atualizados ?? 0} atualizados`,
@@ -353,11 +359,28 @@ export function SyncPage() {
             onValueChange={(v) => setSyncMode(v as SyncMode)}
             disabled={isSyncing}
           >
+            <SelectTrigger className="w-[170px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(MODE_LABELS).map(([key, label]) => (
+                <SelectItem key={key} value={key}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={syncScope}
+            onValueChange={(v) => setSyncScope(v as SyncScope)}
+            disabled={isSyncing}
+          >
             <SelectTrigger className="w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(SYNC_LABELS).map(([key, label]) => (
+              {Object.entries(SCOPE_LABELS).map(([key, label]) => (
                 <SelectItem key={key} value={key}>
                   {label}
                 </SelectItem>

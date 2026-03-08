@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getSyncLogs, getConfigOmie, triggerSync, type SyncType } from '@/services/api/sync'
+import { getSyncLogs, getConfigOmie, triggerSync, type SyncType, type SyncMode } from '@/services/api/sync'
 
 export function useSyncLogs(limit = 50) {
   return useQuery({
@@ -18,7 +18,7 @@ export function useConfigOmie() {
 
 interface TriggerSyncParams {
   type?: SyncType
-  maxPages?: number
+  mode?: SyncMode
 }
 
 // Global lock to prevent concurrent syncs (auto-sync vs manual button)
@@ -35,8 +35,8 @@ export function useTriggerSync() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ type = 'full', maxPages }: TriggerSyncParams = {}) =>
-      triggerSync(type, maxPages),
+    mutationFn: ({ type = 'full', mode = 'incremental' }: TriggerSyncParams = {}) =>
+      triggerSync(type, mode),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sync-logs'] })
       queryClient.invalidateQueries({ queryKey: ['config-omie'] })
@@ -79,7 +79,7 @@ export function useAutoSync() {
       try {
         for (const stage of stages) {
           try {
-            await triggerSync(stage)
+            await triggerSync(stage, 'incremental')
           } catch (err) {
             // 409 = server lock active, stop trying
             if (err instanceof Error && err.message.includes('409')) break
