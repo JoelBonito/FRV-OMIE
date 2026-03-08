@@ -2,11 +2,14 @@
  * Edge Function: omie-sync
  *
  * Syncs vendedores, clients and sales from Omie to Supabase.
- * Processes page-by-page with bulk upsert to stay within timeout.
- * Order: vendedores → clientes → vendas (dependency chain).
+ * Supports two modes:
+ *   - "incremental" (default): only fetches records modified/created since last sync
+ *   - "full": re-fetches everything (for reconciliation or initial load)
  *
  * POST /functions/v1/omie-sync
- * Body: { type: "full" | "vendedores" | "clientes" | "vendas", maxPages?: number }
+ * Body: { type, mode?, maxPages?, dateFrom?, dateTo? }
+ *   type: "full" | "vendedores" | "clientes" | "vendas"
+ *   mode: "incremental" | "full" (default: "incremental")
  */
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
@@ -183,6 +186,8 @@ async function syncVendedores(
 async function syncClientes(
   credentials: OmieCredentials,
   maxPages = 999,
+  /** DD/MM/YYYY — only fetch clients modified since this date (incremental) */
+  dateFrom?: string,
 ): Promise<{ criados: number; atualizados: number; processados: number; errors: string[] }> {
   const supabase = getSupabaseAdmin()
 
@@ -204,10 +209,21 @@ async function syncClientes(
   const errors: string[] = []
 
   while (pagina <= Math.min(totalPages, maxPages)) {
+    const clienteParams: Record<string, unknown> = {
+      pagina,
+      registros_por_pagina: PAGE_SIZE,
+    }
+    // Incremental: only fetch clients modified since dateFrom
+    // Omie ListarClientes uses top-level date filter params (NOT inside clientesFiltro)
+    if (dateFrom) {
+      clienteParams.filtrar_por_data_de = dateFrom
+      clienteParams.filtrar_apenas_alteracao = 'S'
+    }
+
     const result = await omieCall<Record<string, unknown>>(credentials, {
       endpoint: 'geral/clientes',
       call: 'ListarClientes',
-      params: { pagina, registros_por_pagina: PAGE_SIZE },
+      params: clienteParams,
     })
 
     if (result.status === 'error') {
@@ -297,14 +313,22 @@ async function syncVendas(
   const supabase = getSupabaseAdmin()
 
   // Pre-load client mapping (omie_id → {id, tipo, vendedor_id})
-  const { data: allClientes } = await supabase
-    .from('clientes')
-    .select('id, omie_id, tipo, vendedor_id')
-
+  // PostgREST max-rows=1000 — must paginate to load all 3000+ clients
   const clienteMap = new Map<number, { id: string; tipo: string; vendedor_id: string | null }>()
-  for (const c of allClientes || []) {
-    if (c.omie_id) {
-      clienteMap.set(c.omie_id, { id: c.id, tipo: c.tipo, vendedor_id: c.vendedor_id })
+  {
+    const PAGE = 1000
+    let from = 0
+    let hasMore = true
+    while (hasMore) {
+      const { data } = await supabase
+        .from('clientes')
+        .select('id, omie_id, tipo, vendedor_id')
+        .range(from, from + PAGE - 1)
+      for (const c of data || []) {
+        if (c.omie_id) clienteMap.set(c.omie_id, { id: c.id, tipo: c.tipo, vendedor_id: c.vendedor_id })
+      }
+      hasMore = (data?.length || 0) === PAGE
+      from += PAGE
     }
   }
 
@@ -472,6 +496,7 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({})) as {
       type?: string
+      mode?: 'incremental' | 'full'
       maxPages?: number
       /** Date filter FROM for vendas (DD/MM/YYYY) */
       dateFrom?: string
@@ -479,12 +504,32 @@ serve(async (req) => {
       dateTo?: string
     }
     const syncType = body.type || 'full'
-    // Default maxPages: 999 (effectively unlimited). Frontend chains
-    // vendedores → clientes → vendas sequentially to avoid 60s timeout.
+    const syncMode = body.mode || 'incremental'
     const maxPages = body.maxPages || 999
 
     const credentials = await getOmieCredentials()
     const supabaseAdmin = getSupabaseAdmin()
+
+    // For incremental mode: calculate date filter from ultimo_sync
+    let incrementalDateFrom: string | undefined
+    if (syncMode === 'incremental') {
+      const { data: configData } = await supabaseAdmin
+        .from('config_omie')
+        .select('ultimo_sync')
+        .limit(1)
+        .single()
+
+      if (configData?.ultimo_sync) {
+        // Subtract 1 day safety margin for timezone edge cases
+        const sinceDate = new Date(configData.ultimo_sync)
+        sinceDate.setDate(sinceDate.getDate() - 1)
+        incrementalDateFrom = `${String(sinceDate.getDate()).padStart(2, '0')}/${String(sinceDate.getMonth() + 1).padStart(2, '0')}/${sinceDate.getFullYear()}`
+      }
+      // If no ultimo_sync (first run), incrementalDateFrom stays undefined → full fetch
+    }
+
+    // Explicit dateFrom from body overrides incremental calculation
+    const effectiveDateFrom = body.dateFrom || incrementalDateFrom
 
     // Acquire server-side sync lock
     const { data: lockAcquired } = await supabaseAdmin.rpc('acquire_sync_lock')
@@ -504,7 +549,7 @@ serve(async (req) => {
       results.vendedores = vendResult
 
       await logSync({
-        tipo: syncType === 'full' ? 'full_sync' : 'incremental',
+        tipo: syncMode === 'full' ? 'full_sync' : 'incremental',
         endpoint: '/geral/vendedores/',
         call_method: 'ListarVendedores',
         status: vendResult.errors.length > 0 ? 'partial' : 'success',
@@ -519,11 +564,11 @@ serve(async (req) => {
     // 2) Sync clientes (uses vendedor map from step 1)
     if (syncType === 'full' || syncType === 'clientes') {
       const t0 = Date.now()
-      const clientResult = await syncClientes(credentials, maxPages)
+      const clientResult = await syncClientes(credentials, maxPages, effectiveDateFrom)
       results.clientes = clientResult
 
       await logSync({
-        tipo: syncType === 'full' ? 'full_sync' : 'incremental',
+        tipo: syncMode === 'full' ? 'full_sync' : 'incremental',
         endpoint: '/geral/clientes/',
         call_method: 'ListarClientes',
         status: clientResult.errors.length > 0 ? 'partial' : 'success',
@@ -540,14 +585,14 @@ serve(async (req) => {
       const t0 = Date.now()
       const vendasResult = await syncVendas(credentials, {
         maxPages,
-        dateFrom: body.dateFrom,
+        dateFrom: effectiveDateFrom,
         dateTo: body.dateTo,
       })
       results.vendas = vendasResult
 
       const hasIssues = vendasResult.errors.length > 0 || vendasResult.skipped.total > 0
       await logSync({
-        tipo: syncType === 'full' ? 'full_sync' : 'incremental',
+        tipo: syncMode === 'full' ? 'full_sync' : 'incremental',
         endpoint: '/financas/contareceber/',
         call_method: 'ListarContasReceber',
         status: vendasResult.errors.length > 0 ? 'partial' : 'success',
@@ -572,6 +617,8 @@ serve(async (req) => {
       JSON.stringify({
         status: 'success',
         type: syncType,
+        mode: syncMode,
+        dateFrom: effectiveDateFrom || null,
         duration_ms: Date.now() - startTime,
         results,
       }),

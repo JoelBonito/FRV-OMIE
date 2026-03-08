@@ -85,6 +85,20 @@ export async function omieCall<T = unknown>(
           continue
         }
 
+        // "Não existem registros" (code 5113) = empty result, not an error
+        if (errMsg.toLowerCase().includes('existem registros')) {
+          return { data: body500 as T, status: 'success', duration_ms: Date.now() - startTime }
+        }
+
+        // "Consumo redundante" — extract and respect the wait time
+        const redundantMatch = errMsg.match(/aguarde\s+(\d+)\s+segundos/i)
+        if (redundantMatch) {
+          const waitSecs = parseInt(redundantMatch[1])
+          lastError = `Server error (500): ${errMsg}`
+          await sleep(Math.min(waitSecs * 1000, 60000))
+          continue
+        }
+
         // Other 500s: retry with standard backoff
         lastError = `Server error (500): ${errMsg || 'unknown'}`
         continue
