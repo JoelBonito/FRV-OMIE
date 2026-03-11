@@ -24,8 +24,19 @@ export async function getConfigOmie(): Promise<ConfigOmieSafe | null> {
   return data as ConfigOmieSafe | null
 }
 
-export type SyncType = 'full' | 'vendedores' | 'clientes' | 'vendas'
+export type SyncType = 'full' | 'vendedores' | 'clientes' | 'vendas' | 'pedidos'
 export type SyncMode = 'incremental' | 'full'
+
+export interface PedidosSyncDetail {
+  criados: number
+  atualizados: number
+  processados: number
+  itensProcessados?: number
+  hasMore?: boolean
+  nextPage?: number
+  totalPages?: number
+  pagesProcessed?: number
+}
 
 export interface SyncResult {
   status: 'success' | 'error'
@@ -37,6 +48,7 @@ export interface SyncResult {
     vendedores?: { criados: number; atualizados: number; processados: number }
     clientes?: { criados: number; atualizados: number; processados: number }
     vendas?: { criados: number; atualizados: number; processados: number }
+    pedidos?: PedidosSyncDetail
   }
   error?: string
 }
@@ -44,8 +56,10 @@ export interface SyncResult {
 export async function triggerSync(
   type: SyncType = 'full',
   mode: SyncMode = 'incremental',
+  options?: { startPage?: number },
 ): Promise<SyncResult> {
   const body: Record<string, unknown> = { type, mode }
+  if (options?.startPage) body.startPage = options.startPage
 
   const { data, error } = await supabase.functions.invoke('omie-sync', { body })
   if (error) throw error

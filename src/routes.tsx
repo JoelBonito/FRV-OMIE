@@ -11,6 +11,9 @@ const ClientesPage = lazy(() => import('@/pages/clientes/ClientesPage').then(m =
 const ClienteDetalhePage = lazy(() => import('@/pages/clientes/ClienteDetalhePage').then(m => ({ default: m.ClienteDetalhePage })))
 const VendedoresPage = lazy(() => import('@/pages/vendedores/VendedoresPage').then(m => ({ default: m.VendedoresPage })))
 const VendasPage = lazy(() => import('@/pages/vendas/VendasPage').then(m => ({ default: m.VendasPage })))
+const ComparacaoPage = lazy(() => import('@/pages/comparacao/ComparacaoPage').then(m => ({ default: m.ComparacaoPage })))
+const OrcamentosPage = lazy(() => import('@/pages/orcamentos/OrcamentosPage').then(m => ({ default: m.OrcamentosPage })))
+const CurvaAbcPage = lazy(() => import('@/pages/curva-abc/CurvaAbcPage').then(m => ({ default: m.CurvaAbcPage })))
 const CarteirasPage = lazy(() => import('@/pages/carteiras/CarteirasPage').then(m => ({ default: m.CarteirasPage })))
 const SyncPage = lazy(() => import('@/pages/sync/SyncPage').then(m => ({ default: m.SyncPage })))
 const ConfigPage = lazy(() => import('@/pages/config/ConfigPage').then(m => ({ default: m.ConfigPage })))
@@ -48,6 +51,9 @@ export const router = createBrowserRouter([
           { path: 'clientes/:id', element: <SuspenseWrapper><ClienteDetalhePage /></SuspenseWrapper> },
           { path: 'vendedores', element: <SuspenseWrapper><VendedoresPage /></SuspenseWrapper> },
           { path: 'vendas', element: <SuspenseWrapper><VendasPage /></SuspenseWrapper> },
+          { path: 'comparacao', element: <SuspenseWrapper><ComparacaoPage /></SuspenseWrapper> },
+          { path: 'orcamentos', element: <SuspenseWrapper><OrcamentosPage /></SuspenseWrapper> },
+          { path: 'curva-abc', element: <SuspenseWrapper><CurvaAbcPage /></SuspenseWrapper> },
           { path: 'carteiras', element: <SuspenseWrapper><CarteirasPage /></SuspenseWrapper> },
           { path: 'sync', element: <SuspenseWrapper><SyncPage /></SuspenseWrapper> },
           { path: 'config', element: <SuspenseWrapper><ConfigPage /></SuspenseWrapper> },

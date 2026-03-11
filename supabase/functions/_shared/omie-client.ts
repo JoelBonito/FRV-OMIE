@@ -226,21 +226,87 @@ const ADMIN_TAGS = new Set([
   'PREMIER', 'INOVA', 'CONVIVA',
 ])
 
+export interface ClientTypeInfo {
+  tipo: string
+  administradora: string | null
+}
+
+// ----------------------------------------------------------------
+// Omie Pedido types (ListarPedidos response)
+// ----------------------------------------------------------------
+export interface OmiePedidoCabecalho {
+  codigo_pedido: number
+  numero_pedido?: string
+  codigo_pedido_integracao?: string
+  codigo_cliente: number
+  codigo_vendedor?: number
+  data_previsao?: string  // DD/MM/YYYY
+  etapa?: string
+  codigo_parcela?: string
+  quantidade_itens?: number
+}
+
+export interface OmiePedidoInfoCadastro {
+  dInc?: string   // DD/MM/YYYY
+  hInc?: string
+  dAlt?: string
+  hAlt?: string
+  cEtapa?: string
+}
+
+export interface OmiePedidoItem {
+  produto?: {
+    codigo_produto?: number
+    descricao?: string
+    quantidade?: number
+    valor_unitario?: number
+    valor_total?: number
+    unidade?: string
+    codigo?: string
+  }
+}
+
+export interface OmiePedidoTotalPedido {
+  valor_total_pedido?: number
+  valor_mercadorias?: number
+}
+
+export interface OmiePedidoFrete {
+  previsao_entrega?: string  // DD/MM/YYYY
+}
+
+export interface OmiePedidoRaw {
+  cabecalho: OmiePedidoCabecalho
+  det?: OmiePedidoItem[]
+  infoCadastro?: OmiePedidoInfoCadastro
+  total_pedido?: OmiePedidoTotalPedido
+  frete?: OmiePedidoFrete
+  observacoes?: { obs_venda?: string }
+}
+
 /**
  * Determine client type from Omie tags.
  * Priority: explicit tipo tag > admin tag > default 'empresa'.
  */
 export function resolveClientType(tags: Array<{ tag: string }>): string {
+  return resolveClientInfo(tags).tipo
+}
+
+/**
+ * Resolve both tipo and administradora name from Omie tags.
+ * When a client has an admin tag (e.g. CONDONAL), returns:
+ *   { tipo: 'administradora', administradora: 'CONDONAL' }
+ */
+export function resolveClientInfo(tags: Array<{ tag: string }>): ClientTypeInfo {
   for (const { tag } of tags) {
     const upper = tag.toUpperCase().trim()
-    if (TAG_TO_TIPO[upper]) return TAG_TO_TIPO[upper]
+    if (TAG_TO_TIPO[upper]) return { tipo: TAG_TO_TIPO[upper], administradora: null }
   }
 
   for (const { tag } of tags) {
     const upper = tag.toUpperCase().trim()
-    if (ADMIN_TAGS.has(upper)) return 'administradora'
+    if (ADMIN_TAGS.has(upper)) return { tipo: 'administradora', administradora: upper }
   }
 
-  // Default for business clients
-  return 'empresa'
+  return { tipo: 'empresa', administradora: null }
 }

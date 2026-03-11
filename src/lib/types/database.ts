@@ -56,6 +56,7 @@ export interface Database {
           telefone: string | null
           email: string | null
           notas: string | null
+          administradora: string | null
           data_inativacao: string | null
           motivo_inativacao: string | null
           created_at: string
@@ -72,6 +73,7 @@ export interface Database {
           telefone?: string | null
           email?: string | null
           notas?: string | null
+          administradora?: string | null
           data_inativacao?: string | null
           motivo_inativacao?: string | null
           created_at?: string
@@ -88,6 +90,7 @@ export interface Database {
           telefone?: string | null
           email?: string | null
           notas?: string | null
+          administradora?: string | null
           data_inativacao?: string | null
           motivo_inativacao?: string | null
           updated_at?: string
@@ -249,6 +252,112 @@ export interface Database {
         }
         Relationships: []
       }
+      pedidos: {
+        Row: {
+          id: string
+          omie_id: number
+          cliente_id: string | null
+          vendedor_id: string | null
+          numero_pedido: string | null
+          valor_total: number
+          etapa: string | null
+          status: string
+          previsao_faturamento: string | null
+          data_pedido: string | null
+          tags: string[] | null
+          observacao: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          omie_id: number
+          cliente_id?: string | null
+          vendedor_id?: string | null
+          numero_pedido?: string | null
+          valor_total?: number
+          etapa?: string | null
+          status?: string
+          previsao_faturamento?: string | null
+          data_pedido?: string | null
+          tags?: string[] | null
+          observacao?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          omie_id?: number
+          cliente_id?: string | null
+          vendedor_id?: string | null
+          numero_pedido?: string | null
+          valor_total?: number
+          etapa?: string | null
+          status?: string
+          previsao_faturamento?: string | null
+          data_pedido?: string | null
+          tags?: string[] | null
+          observacao?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'pedidos_cliente_id_fkey'
+            columns: ['cliente_id']
+            isOneToOne: false
+            referencedRelation: 'clientes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'pedidos_vendedor_id_fkey'
+            columns: ['vendedor_id']
+            isOneToOne: false
+            referencedRelation: 'vendedores'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      pedido_itens: {
+        Row: {
+          id: string
+          pedido_id: string
+          produto_omie_id: number | null
+          descricao: string | null
+          quantidade: number
+          valor_unitario: number
+          valor_total: number
+          unidade: string | null
+        }
+        Insert: {
+          id?: string
+          pedido_id: string
+          produto_omie_id?: number | null
+          descricao?: string | null
+          quantidade?: number
+          valor_unitario?: number
+          valor_total?: number
+          unidade?: string | null
+        }
+        Update: {
+          id?: string
+          pedido_id?: string
+          produto_omie_id?: number | null
+          descricao?: string | null
+          quantidade?: number
+          valor_unitario?: number
+          valor_total?: number
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'pedido_itens_pedido_id_fkey'
+            columns: ['pedido_id']
+            isOneToOne: false
+            referencedRelation: 'pedidos'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       sync_logs: {
         Row: {
           id: string
@@ -365,6 +474,34 @@ export interface Database {
         }
         Relationships: []
       }
+      v_curva_abc_valor: {
+        Row: {
+          ordem: number
+          descricao: string
+          valor: number
+          quantidade: number
+          pedidos: number
+          pct_participacao: number
+          valor_acumulado: number
+          pct_acumulado: number
+          abc: string
+        }
+        Relationships: []
+      }
+      v_curva_abc_quantidade: {
+        Row: {
+          ordem: number
+          descricao: string
+          quantidade: number
+          valor: number
+          pedidos: number
+          pct_participacao: number
+          qtd_acumulada: number
+          pct_acumulado: number
+          abc: string
+        }
+        Relationships: []
+      }
     }
     Functions: Record<string, never>
     Enums: Record<string, never>
@@ -380,3 +517,87 @@ export type UpdateTables<T extends keyof Database['frv_omie']['Tables']> =
   Database['frv_omie']['Tables'][T]['Update']
 export type Views<T extends keyof Database['frv_omie']['Views']> =
   Database['frv_omie']['Views'][T]['Row']
+
+// RPC function return types
+export interface ChurnPorAdministradora {
+  administradora: string
+  condominios_mes1: number
+  condominios_mes2: number
+  retidos: number
+  perdidos: number
+  novos: number
+  taxa_retencao: number
+  faturamento_mes1: number
+  faturamento_mes2: number
+  delta_faturamento: number
+  pedidos_mes1: number
+  pedidos_mes2: number
+}
+
+export interface ClienteChurn {
+  cliente_id: string
+  nome: string
+  tipo: string
+  administradora: string | null
+  vendedor: string | null
+  vendedor_id: string | null
+  valor_ref: number
+  pedidos_ref: number
+  ultima_emissao: string | null
+}
+
+export interface ClienteNovo {
+  cliente_id: string
+  nome: string
+  tipo: string
+  administradora: string | null
+  vendedor: string | null
+  vendedor_id: string | null
+  valor_atual: number
+  pedidos_atual: number
+}
+
+export interface ClienteComparacao {
+  cliente_id: string
+  nome: string
+  tipo: string
+  administradora: string | null
+  vendedor: string | null
+  vendedor_id: string | null
+  faturamento_mes1: number
+  faturamento_mes2: number
+  pedidos_mes1: number
+  pedidos_mes2: number
+  delta_faturamento: number
+  status: 'Retido' | 'Perdido' | 'Novo'
+}
+
+export interface TopQueda {
+  administradora: string
+  condominios_perdidos: number
+  pedidos_perdidos: number
+  valor_perdido: number
+}
+
+export interface ComparacaoPorVendedor {
+  vendedor_id: string
+  vendedor: string
+  faturamento_mes1: number
+  faturamento_mes2: number
+  delta_faturamento: number
+  clientes_mes1: number
+  clientes_mes2: number
+  pedidos_mes1: number
+  pedidos_mes2: number
+}
+
+export interface ComparacaoPorTipo {
+  tipo_cliente: string
+  faturamento_mes1: number
+  faturamento_mes2: number
+  delta_faturamento: number
+  clientes_mes1: number
+  clientes_mes2: number
+  pedidos_mes1: number
+  pedidos_mes2: number
+}

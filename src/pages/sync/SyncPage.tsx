@@ -39,13 +39,14 @@ import { triggerSync, type SyncResult, type SyncMode } from '@/services/api/sync
 import type { Tables } from '@/lib/types/database'
 
 type SyncLog = Tables<'sync_logs'>
-type SyncScope = 'full' | 'vendedores' | 'clientes' | 'vendas'
+type SyncScope = 'full' | 'vendedores' | 'clientes' | 'vendas' | 'pedidos'
 
 const SCOPE_LABELS: Record<SyncScope, string> = {
   full: 'Completo (Sequencial)',
   vendedores: 'Apenas Vendedores',
   clientes: 'Apenas Clientes',
   vendas: 'Apenas Vendas',
+  pedidos: 'Apenas Pedidos',
 }
 
 const MODE_LABELS: Record<SyncMode, string> = {
@@ -57,6 +58,7 @@ const PHASE_LABELS: Record<string, string> = {
   vendedores: 'Sincronizando vendedores...',
   clientes: 'Sincronizando clientes...',
   vendas: 'Sincronizando vendas...',
+  pedidos: 'Sincronizando pedidos...',
 }
 
 function formatDateTime(iso: string): string {
@@ -251,8 +253,53 @@ export function SyncPage() {
     queryClient.invalidateQueries({ queryKey: ['vendedores'] })
     queryClient.invalidateQueries({ queryKey: ['clientes'] })
     queryClient.invalidateQueries({ queryKey: ['vendas'] })
+    queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+    queryClient.invalidateQueries({ queryKey: ['pedido-stats'] })
     queryClient.invalidateQueries({ queryKey: ['dashboard'] })
   }, [queryClient])
+
+  /** Sync pedidos with automatic pagination (loops while hasMore=true) */
+  async function syncPedidosWithPagination(mode: SyncMode): Promise<SyncResult | null> {
+    let startPage: number | undefined
+    let totalProcessados = 0
+    let totalCriados = 0
+    let totalItens = 0
+    let lastResult: SyncResult | null = null
+    let batchCount = 0
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      batchCount++
+      const result = await triggerSync('pedidos', mode, { startPage })
+      lastResult = result
+
+      const pd = result.results.pedidos
+      if (pd) {
+        totalProcessados += pd.processados
+        totalCriados += pd.criados
+        totalItens += pd.itensProcessados ?? 0
+
+        toast.info(
+          `Pedidos batch ${batchCount}: ${pd.processados} processados` +
+          (pd.totalPages ? ` (pág ${pd.pagesProcessed}/${pd.totalPages})` : ''),
+        )
+
+        if (pd.hasMore && pd.nextPage) {
+          startPage = pd.nextPage
+          continue
+        }
+      }
+      break
+    }
+
+    // Patch the final result with accumulated totals
+    if (lastResult?.results.pedidos) {
+      lastResult.results.pedidos.processados = totalProcessados
+      lastResult.results.pedidos.criados = totalCriados
+      lastResult.results.pedidos.itensProcessados = totalItens
+    }
+    return lastResult
+  }
 
   async function handleSync() {
     if (isSyncLocked()) {
@@ -270,10 +317,10 @@ export function SyncPage() {
     try {
       if (syncScope === 'full') {
         // Sequential sync to avoid 60s Edge Function timeout
-        const stages = ['vendedores', 'clientes', 'vendas'] as const
-        const results: Partial<Record<typeof stages[number], SyncResult>> = {}
+        const nonPedidoStages = ['vendedores', 'clientes', 'vendas'] as const
+        const results: Partial<Record<'vendedores' | 'clientes' | 'vendas' | 'pedidos', SyncResult>> = {}
 
-        for (const stage of stages) {
+        for (const stage of nonPedidoStages) {
           setSyncPhase(stage)
           const result = await triggerSync(stage, syncMode)
           results[stage] = result
@@ -288,16 +335,35 @@ export function SyncPage() {
           }
         }
 
+        // Pedidos: paginated loop
+        setSyncPhase('pedidos')
+        const pedidosResult = await syncPedidosWithPagination(syncMode)
+        if (pedidosResult) results.pedidos = pedidosResult
+
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
         const ve = results.vendedores?.results.vendedores
         const cl = results.clientes?.results.clientes
         const vd = results.vendas?.results.vendas
+        const pd = results.pedidos?.results.pedidos
 
         toast.success(
           `Sync ${syncMode === 'incremental' ? 'incremental' : 'full'} em ${elapsed}s — ` +
           `Vendedores: ${ve?.processados ?? 0} | ` +
           `Clientes: ${cl?.processados ?? 0} | ` +
-          `Vendas: ${vd?.processados ?? 0}`,
+          `Vendas: ${vd?.processados ?? 0} | ` +
+          `Pedidos: ${pd?.processados ?? 0}`,
+        )
+      } else if (syncScope === 'pedidos') {
+        // Pedidos: paginated loop
+        setSyncPhase('pedidos')
+        const result = await syncPedidosWithPagination(syncMode)
+        const pd = result?.results.pedidos
+
+        toast.success(
+          `Sync pedidos em ${((Date.now() - startTime) / 1000).toFixed(1)}s — ` +
+          `${pd?.processados ?? 0} processados, ` +
+          `${pd?.criados ?? 0} criados, ` +
+          `${pd?.itensProcessados ?? 0} itens`,
         )
       } else {
         setSyncPhase(syncScope)

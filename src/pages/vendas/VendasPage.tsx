@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
 import {
   Plus,
-  Download,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -33,6 +32,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { DataTable, SortableHeader } from '@/components/tables/DataTable'
+import { ExportButtons, type ExportColumn } from '@/components/ExportButtons'
 import { VendaFormDialog } from './components/VendaFormDialog'
 import { ResumoGlobalTable } from './components/ResumoGlobalTable'
 import { VendedoresPivotTable } from './components/VendedoresPivotTable'
@@ -280,10 +280,28 @@ export function VendasPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Exportar
-          </Button>
+          <ExportButtons
+            data={filtered.map((v) => ({
+              periodo: formatMonthYear(v.mes, v.ano),
+              cliente: v.clientes?.nome ?? '—',
+              vendedor: v.vendedores?.nome ?? '—',
+              tipo: v.tipo_cliente,
+              valor: v.valor,
+              status: v.status,
+              nota_fiscal: v.nota_fiscal ?? '',
+            }))}
+            columns={[
+              { key: 'periodo', header: 'Período' },
+              { key: 'cliente', header: 'Cliente' },
+              { key: 'vendedor', header: 'Vendedor' },
+              { key: 'tipo', header: 'Tipo' },
+              { key: 'valor', header: 'Valor', format: (v) => formatCurrency(v as number) },
+              { key: 'status', header: 'Status' },
+              { key: 'nota_fiscal', header: 'NF' },
+            ] satisfies ExportColumn[]}
+            title="Relatório de Vendas"
+            fileName="vendas"
+          />
           <Button
             className="gap-2 bg-[#0066FF] hover:bg-[#0052CC] shadow-lg shadow-[#0066FF]/20"
             onClick={handleCreate}

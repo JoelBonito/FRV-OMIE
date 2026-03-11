@@ -13,7 +13,7 @@
  */
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
-import { omieCall, resolveClientType, type OmieCredentials } from '../_shared/omie-client.ts'
+import { omieCall, resolveClientInfo, type OmieCredentials, type OmiePedidoRaw } from '../_shared/omie-client.ts'
 import {
   getSupabaseAdmin,
   getOmieCredentials,
@@ -236,7 +236,7 @@ async function syncClientes(
 
     // Build batch records
     const records = items.map((cli) => {
-      const tipo = resolveClientType(cli.tags || [])
+      const clientInfo = resolveClientInfo(cli.tags || [])
       const telefone = cli.telefone1_ddd && cli.telefone1_numero
         ? `(${cli.telefone1_ddd}) ${cli.telefone1_numero}`
         : cli.telefone1_numero || null
@@ -248,7 +248,8 @@ async function syncClientes(
       return {
         omie_id: cli.codigo_cliente_omie,
         nome: cli.razao_social || cli.nome_fantasia,
-        tipo,
+        tipo: clientInfo.tipo,
+        administradora: clientInfo.administradora,
         status: cli.inativo === 'S' ? 'inativo' as const : 'ativo' as const,
         vendedor_id,
         cnpj: cli.cnpj_cpf || null,
@@ -478,6 +479,279 @@ async function syncVendas(
 }
 
 // ----------------------------------------------------------------
+// Sync Pedidos — from /produtos/pedido/ → ListarPedidos
+// ----------------------------------------------------------------
+const PEDIDOS_MAX_PAGES_PER_CALL = 5  // Limit per invocation to stay under 60s timeout
+
+interface SyncPedidosOptions {
+  maxPages?: number
+  dateFrom?: string
+  /** Start from this page (1-based). Used for pagination across calls. */
+  startPage?: number
+}
+
+interface SyncPedidosResult {
+  criados: number
+  atualizados: number
+  processados: number
+  itensProcessados: number
+  errors: string[]
+  skipped: { noClient: number; total: number }
+  totalApiRecords: number
+  pagesProcessed: number
+  totalPages: number
+  /** If true, there are more pages. Frontend should call again with nextPage. */
+  hasMore: boolean
+  /** Next page to request (only set when hasMore=true). */
+  nextPage?: number
+}
+
+async function syncPedidos(
+  credentials: OmieCredentials,
+  options: SyncPedidosOptions = {},
+): Promise<SyncPedidosResult> {
+  const { maxPages = 999, dateFrom, startPage = 1 } = options
+  const effectiveMaxPages = Math.min(maxPages, PEDIDOS_MAX_PAGES_PER_CALL)
+  const supabase = getSupabaseAdmin()
+
+  // Pre-load client mapping (omie_id → UUID)
+  const clienteMap = new Map<number, string>()
+  {
+    const PAGE = 1000
+    let from = 0
+    let hasMore = true
+    while (hasMore) {
+      const { data } = await supabase
+        .from('clientes')
+        .select('id, omie_id')
+        .range(from, from + PAGE - 1)
+      for (const c of data || []) {
+        if (c.omie_id) clienteMap.set(c.omie_id, c.id)
+      }
+      hasMore = (data?.length || 0) === PAGE
+      from += PAGE
+    }
+  }
+
+  // Pre-load vendedor mapping (omie_id → UUID)
+  const { data: allVendedores } = await supabase
+    .from('vendedores')
+    .select('id, omie_id')
+
+  const vendedorMap = new Map<number, string>()
+  for (const v of allVendedores || []) {
+    if (v.omie_id) vendedorMap.set(v.omie_id, v.id)
+  }
+
+  let pagina = startPage
+  let totalPages = startPage  // Will be updated after first API call
+  let pagesProcessedThisCall = 0
+  let criados = 0
+  let atualizados = 0
+  let processados = 0
+  let itensProcessados = 0
+  const errors: string[] = []
+  let skipNoClient = 0
+  let totalApiRecords = 0
+
+  const baseParams: Record<string, unknown> = {
+    registros_por_pagina: PAGE_SIZE,
+  }
+  if (dateFrom) {
+    baseParams.filtrar_por_data_de = dateFrom
+    baseParams.filtrar_apenas_alteracao = 'S'
+  }
+
+  while (pagina <= totalPages && pagesProcessedThisCall < effectiveMaxPages) {
+    const result = await omieCall<Record<string, unknown>>(credentials, {
+      endpoint: 'produtos/pedido',
+      call: 'ListarPedidos',
+      params: { ...baseParams, pagina },
+    })
+
+    if (result.status === 'error') {
+      errors.push(`Page ${pagina}: ${result.error}`)
+      break
+    }
+
+    totalPages = (result.data.total_de_paginas as number) || 1
+    const items = (result.data.pedido_venda_produto as OmiePedidoRaw[]) || []
+    totalApiRecords += items.length
+
+    // Build pedido records for this page
+    const pedidoRecords = []
+    const pedidoItensMap = new Map<number, Array<{
+      produto_omie_id: number | null
+      descricao: string | null
+      quantidade: number
+      valor_unitario: number
+      valor_total: number
+      unidade: string | null
+    }>>()
+
+    for (const pedido of items) {
+      const cab = pedido.cabecalho
+      if (!cab?.codigo_pedido) continue
+
+      const clienteId = clienteMap.get(cab.codigo_cliente)
+      if (!clienteId) {
+        skipNoClient++
+        continue
+      }
+
+      const vendedorId = cab.codigo_vendedor
+        ? vendedorMap.get(cab.codigo_vendedor) ?? null
+        : null
+
+      let previsaoFaturamento: string | null = null
+      const prevStr = pedido.frete?.previsao_entrega || cab.data_previsao
+      if (prevStr) {
+        const parts = prevStr.split('/')
+        if (parts.length === 3) {
+          previsaoFaturamento = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+        }
+      }
+
+      let dataPedido: string | null = null
+      const dInc = pedido.infoCadastro?.dInc
+      if (dInc) {
+        const parts = dInc.split('/')
+        if (parts.length === 3) {
+          dataPedido = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+        }
+      }
+
+      const etapa = cab.etapa || pedido.infoCadastro?.cEtapa || null
+
+      pedidoRecords.push({
+        omie_id: cab.codigo_pedido,
+        cliente_id: clienteId,
+        vendedor_id: vendedorId,
+        numero_pedido: cab.numero_pedido || String(cab.codigo_pedido),
+        valor_total: pedido.total_pedido?.valor_total_pedido ?? 0,
+        etapa,
+        status: etapa?.toUpperCase() === 'CANCELADO' ? 'cancelado' : 'aberto',
+        previsao_faturamento: previsaoFaturamento,
+        data_pedido: dataPedido,
+        observacao: pedido.observacoes?.obs_venda || null,
+        updated_at: new Date().toISOString(),
+      })
+
+      if (pedido.det && pedido.det.length > 0) {
+        const itens = pedido.det.map((det) => ({
+          produto_omie_id: det.produto?.codigo_produto ?? null,
+          descricao: det.produto?.descricao ?? null,
+          quantidade: det.produto?.quantidade ?? 0,
+          valor_unitario: det.produto?.valor_unitario ?? 0,
+          valor_total: det.produto?.valor_total ?? 0,
+          unidade: det.produto?.unidade ?? null,
+        }))
+        pedidoItensMap.set(cab.codigo_pedido, itens)
+      }
+    }
+
+    // Bulk upsert pedidos by omie_id
+    if (pedidoRecords.length > 0) {
+      const { error, count } = await supabase
+        .from('pedidos')
+        .upsert(pedidoRecords, { onConflict: 'omie_id', count: 'exact' })
+
+      if (error) {
+        errors.push(`Upsert pedidos page ${pagina}: ${error.message}`)
+      } else {
+        processados += pedidoRecords.length
+        criados += count ?? pedidoRecords.length
+
+        // Fetch pedido UUIDs for this batch
+        const omieIds = pedidoRecords.map((r) => r.omie_id)
+        const { data: pedidoRows } = await supabase
+          .from('pedidos')
+          .select('id, omie_id')
+          .in('omie_id', omieIds)
+
+        if (pedidoRows && pedidoRows.length > 0) {
+          // Build omie→uuid map for this batch
+          const omieToUuid = new Map<number, string>()
+          for (const row of pedidoRows) {
+            omieToUuid.set(row.omie_id, row.id)
+          }
+
+          // Collect pedido_ids that have items for batch delete
+          const pedidoIdsWithItems: string[] = []
+          const allItensToInsert: Array<{
+            pedido_id: string
+            produto_omie_id: number | null
+            descricao: string | null
+            quantidade: number
+            valor_unitario: number
+            valor_total: number
+            unidade: string | null
+          }> = []
+
+          for (const [omieId, itens] of pedidoItensMap) {
+            const pedidoUuid = omieToUuid.get(omieId)
+            if (!pedidoUuid || itens.length === 0) continue
+
+            pedidoIdsWithItems.push(pedidoUuid)
+            for (const item of itens) {
+              allItensToInsert.push({ ...item, pedido_id: pedidoUuid })
+            }
+          }
+
+          // Batch delete all existing items for these pedidos (1 call)
+          if (pedidoIdsWithItems.length > 0) {
+            await supabase
+              .from('pedido_itens')
+              .delete()
+              .in('pedido_id', pedidoIdsWithItems)
+          }
+
+          // Batch insert all items at once (1 call, max ~1000 rows per batch)
+          if (allItensToInsert.length > 0) {
+            const BATCH_SIZE = 500
+            for (let i = 0; i < allItensToInsert.length; i += BATCH_SIZE) {
+              const batch = allItensToInsert.slice(i, i + BATCH_SIZE)
+              const { error: itensError } = await supabase
+                .from('pedido_itens')
+                .insert(batch)
+
+              if (itensError) {
+                errors.push(`Insert itens batch ${Math.floor(i / BATCH_SIZE)}: ${itensError.message}`)
+              } else {
+                itensProcessados += batch.length
+              }
+            }
+          }
+        }
+      }
+    }
+
+    pagina++
+    pagesProcessedThisCall++
+
+    if (pagina <= totalPages && pagesProcessedThisCall < effectiveMaxPages) {
+      await new Promise((r) => setTimeout(r, PAGE_DELAY_MS))
+    }
+  }
+
+  const hasMorePages = pagina <= totalPages
+
+  return {
+    criados,
+    atualizados,
+    processados,
+    itensProcessados,
+    errors,
+    skipped: { noClient: skipNoClient, total: skipNoClient },
+    totalApiRecords,
+    pagesProcessed: pagesProcessedThisCall,
+    totalPages,
+    hasMore: hasMorePages,
+    nextPage: hasMorePages ? pagina : undefined,
+  }
+}
+
+// ----------------------------------------------------------------
 // Main handler
 // ----------------------------------------------------------------
 serve(async (req) => {
@@ -502,6 +776,8 @@ serve(async (req) => {
       dateFrom?: string
       /** Date filter TO for vendas (DD/MM/YYYY) */
       dateTo?: string
+      /** Start page for pedidos pagination (1-based) */
+      startPage?: number
     }
     const syncType = body.type || 'full'
     const syncMode = body.mode || 'incremental'
@@ -605,6 +881,37 @@ serve(async (req) => {
           totalApiRecords: vendasResult.totalApiRecords,
           pagesProcessed: vendasResult.pagesProcessed,
           totalPages: vendasResult.totalPages,
+        } : null,
+        duracao_ms: Date.now() - t0,
+      })
+    }
+
+    // 4) Sync pedidos (uses cliente+vendedor maps)
+    if (syncType === 'full' || syncType === 'pedidos') {
+      const t0 = Date.now()
+      const pedidosResult = await syncPedidos(credentials, {
+        maxPages,
+        dateFrom: effectiveDateFrom,
+        startPage: body.startPage,
+      })
+      results.pedidos = pedidosResult
+
+      const hasIssues = pedidosResult.errors.length > 0 || pedidosResult.skipped.total > 0
+      await logSync({
+        tipo: syncMode === 'full' ? 'full_sync' : 'incremental',
+        endpoint: '/produtos/pedido/',
+        call_method: 'ListarPedidos',
+        status: pedidosResult.errors.length > 0 ? 'partial' : 'success',
+        registros_processados: pedidosResult.processados,
+        registros_criados: pedidosResult.criados,
+        registros_atualizados: pedidosResult.atualizados,
+        erros: hasIssues ? {
+          errors: pedidosResult.errors,
+          skipped: pedidosResult.skipped,
+          itensProcessados: pedidosResult.itensProcessados,
+          totalApiRecords: pedidosResult.totalApiRecords,
+          pagesProcessed: pedidosResult.pagesProcessed,
+          totalPages: pedidosResult.totalPages,
         } : null,
         duracao_ms: Date.now() - t0,
       })

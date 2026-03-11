@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   Filter,
   Info,
+  UserMinus,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -43,8 +44,10 @@ import {
   useVendasMesCount,
   useVendedores,
 } from '@/hooks/useDashboard'
+import { Link } from 'react-router-dom'
 import { formatCurrency, formatMonthYear } from '@/lib/formatters'
-import { MONTHS } from '@/lib/constants'
+import { MONTHS, ROUTES } from '@/lib/constants'
+import { useTopQuedas, useClientesChurn } from '@/hooks/useComparacao'
 import { CHART_COLORS, TYPE_COLORS, TYPE_LABELS_PLURAL as TYPE_LABELS } from '@/lib/theme-constants'
 
 
@@ -186,6 +189,12 @@ export function DashboardPage() {
         }
       })
   }, [vendedorData, vendedores])
+
+  // Churn: compare current month with previous
+  const prevMesChurn = mes === 1 ? 12 : mes - 1
+  const prevAnoChurn = mes === 1 ? ano - 1 : ano
+  const { data: topQuedas } = useTopQuedas(prevAnoChurn, prevMesChurn, ano, mes, 3)
+  const { data: churnClientes } = useClientesChurn(prevAnoChurn, prevMesChurn, ano, mes)
 
   const kpiLoading = loadingResumo || loadingClientes || loadingVendas
 
@@ -571,6 +580,33 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Alert banner — Churn de clientes */}
+      {churnClientes && churnClientes.length > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-red-200/50 bg-red-50 dark:bg-red-900/10 dark:border-red-800/50 p-4">
+          <UserMinus className="h-5 w-5 shrink-0 text-red-500 mt-0.5" />
+          <div className="flex-1 space-y-2">
+            <p className="text-sm font-medium">
+              {churnClientes.length} cliente{churnClientes.length !== 1 && 's'} compraram em {MONTHS[prevMesChurn - 1]} mas nao compraram em {MONTHS[mes - 1]}
+            </p>
+            {topQuedas && topQuedas.length > 0 && (
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <p className="font-medium text-red-600 dark:text-red-400">Top administradoras afetadas:</p>
+                {topQuedas.map((q) => (
+                  <p key={q.administradora}>
+                    {q.administradora}: {q.condominios_perdidos} perdidos ({formatCurrency(q.valor_perdido)})
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+          <Link to={ROUTES.COMPARACAO}>
+            <Button variant="outline" size="sm" className="shrink-0">
+              Ver detalhes
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Alert banner — Clientes inativos */}
       {!loadingInativos && inativos && inativos.length > 0 && (

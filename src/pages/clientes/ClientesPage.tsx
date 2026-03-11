@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DataTable, SortableHeader } from '@/components/tables/DataTable'
+import { ExportButtons, type ExportColumn } from '@/components/ExportButtons'
 import { ClienteFormDialog } from './components/ClienteFormDialog'
 import {
   useClientes,
@@ -207,10 +208,32 @@ export function ClientesPage() {
             {clientes?.length ?? 0} clientes cadastrados
           </p>
         </div>
-        <Button className="gap-2 bg-[#0066FF] hover:bg-[#0052CC] shadow-lg shadow-[#0066FF]/20" onClick={handleCreate}>
-          <Plus className="h-4 w-4" />
-          Novo Cliente
-        </Button>
+        <div className="flex gap-2">
+          <ExportButtons
+            data={filtered.map((c) => ({
+              nome: c.nome,
+              tipo: c.tipo,
+              vendedor: c.vendedores?.nome ?? '—',
+              status: c.status,
+              email: c.email ?? '',
+              telefone: c.telefone ?? '',
+            }))}
+            columns={[
+              { key: 'nome', header: 'Nome' },
+              { key: 'tipo', header: 'Tipo' },
+              { key: 'vendedor', header: 'Vendedor' },
+              { key: 'status', header: 'Status' },
+              { key: 'email', header: 'Email' },
+              { key: 'telefone', header: 'Telefone' },
+            ] satisfies ExportColumn[]}
+            title="Relatório de Clientes"
+            fileName="clientes"
+          />
+          <Button className="gap-2 bg-[#0066FF] hover:bg-[#0052CC] shadow-lg shadow-[#0066FF]/20" onClick={handleCreate}>
+            <Plus className="h-4 w-4" />
+            Novo Cliente
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
