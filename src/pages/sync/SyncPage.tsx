@@ -267,7 +267,7 @@ export function SyncPage() {
     let lastResult: SyncResult | null = null
     let batchCount = 0
 
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       batchCount++
       const result = await triggerSync('pedidos', mode, { startPage })

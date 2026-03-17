@@ -3,7 +3,7 @@ import { ArrowRightLeft, Calendar, User, Search, Filter, UserCircle2 } from 'luc
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Badge } from '@/components/ui/badge'
+
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -176,25 +176,25 @@ export function CarteirasPage() {
                 <Calendar className="h-4 w-4 text-[#0066FF]" />
                 Anos para Comparação
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1 bg-slate-100/80 p-1 border border-slate-200/50 rounded-lg w-fit">
                 {availableYears.length > 0 ? (
                   availableYears.map(year => (
-                    <Badge
+                    <button
                       key={year}
-                      variant={selectedYears.includes(year) ? "default" : "outline"}
-                      className={cn(
-                        "cursor-pointer px-4 py-1.5 text-sm transition-all",
-                        selectedYears.includes(year)
-                          ? "bg-[#0066FF] hover:bg-[#0052CC] shadow-md"
-                          : "hover:bg-slate-100"
-                      )}
+                      type="button"
                       onClick={() => toggleYear(year)}
+                      className={cn(
+                        "px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]/50",
+                        selectedYears.includes(year)
+                          ? "bg-white text-[#0066FF] shadow-sm"
+                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                      )}
                     >
                       {year}
-                    </Badge>
+                    </button>
                   ))
                 ) : (
-                  <span className="text-xs text-muted-foreground italic">Nenhum dado disponível</span>
+                  <span className="text-xs text-muted-foreground italic px-2 py-1.5">Nenhum dado</span>
                 )}
               </div>
             </div>

@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { type ColumnDef } from '@tanstack/react-table'
 import {
-  Plus,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -71,10 +70,7 @@ export function ClientesPage() {
     setDialogOpen(true)
   }
 
-  function handleCreate() {
-    setEditingCliente(null)
-    setDialogOpen(true)
-  }
+
 
   function handleDelete(id: string, nome: string) {
     if (!confirm(`Excluir cliente "${nome}"?`)) return
@@ -229,10 +225,7 @@ export function ClientesPage() {
             title="Relatório de Clientes"
             fileName="clientes"
           />
-          <Button className="gap-2 bg-[#0066FF] hover:bg-[#0052CC] shadow-lg shadow-[#0066FF]/20" onClick={handleCreate}>
-            <Plus className="h-4 w-4" />
-            Novo Cliente
-          </Button>
+
         </div>
       </div>
 

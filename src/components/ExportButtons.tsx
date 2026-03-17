@@ -124,7 +124,7 @@ export function ExportButtons({ data, columns, title, fileName }: ExportButtonsP
       <Button
         variant="outline"
         size="sm"
-        className="gap-1.5"
+        className="gap-1.5 hover:bg-red-50 hover:text-red-700 hover:border-red-200 dark:hover:bg-red-950/50 dark:hover:text-red-400 dark:hover:border-red-800 transition-colors"
         onClick={handleExportPdf}
         disabled={loadingPdf}
       >
@@ -134,7 +134,7 @@ export function ExportButtons({ data, columns, title, fileName }: ExportButtonsP
       <Button
         variant="outline"
         size="sm"
-        className="gap-1.5"
+        className="gap-1.5 hover:bg-green-50 hover:text-green-700 hover:border-green-200 dark:hover:bg-green-950/50 dark:hover:text-green-400 dark:hover:border-green-800 transition-colors"
         onClick={handleExportExcel}
         disabled={loadingXlsx}
       >

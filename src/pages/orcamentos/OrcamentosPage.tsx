@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { type ColumnDef } from '@tanstack/react-table'
 import {
   FileText,
@@ -79,6 +80,7 @@ function formatDate(dateStr: string | null): string {
 }
 
 export function OrcamentosPage() {
+  const [searchParams] = useSearchParams()
   const [filterEtapa, setFilterEtapa] = useState<string | undefined>(undefined)
   const [filterVendedor, setFilterVendedor] = useState<string | undefined>(undefined)
   const [search, setSearch] = useState('')
@@ -142,6 +144,15 @@ export function OrcamentosPage() {
       setFilterEtapa('__EXECUCAO__')
     }
   }
+
+  // Deep link: read ?preset= from URL on mount
+  useEffect(() => {
+    const preset = searchParams.get('preset')
+    if (preset === 'todos' || preset === 'orcamentos' || preset === 'execucao') {
+      setPreset(preset)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const displayData = useMemo(() => {
     if (filterEtapa === '__EXECUCAO__') {

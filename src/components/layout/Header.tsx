@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PanelLeftClose, PanelLeftOpen, LogOut, RefreshCw, CheckCircle2 } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, LogOut, RefreshCw, CheckCircle2, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -11,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { ROLE_LABELS } from '@/lib/roles'
 import { APP_NAME, ROUTES } from '@/lib/constants'
 import { ROLE_BADGE_CLASSES } from '@/lib/theme-constants'
+import { HelpMenu } from '@/components/HelpMenu'
 
 function formatTimeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -32,6 +34,7 @@ interface HeaderProps {
 export function Header({ collapsed, onToggleSidebar, syncStatus, lastSync }: HeaderProps) {
   const { user, role, signOut } = useAuth()
   const navigate = useNavigate()
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const handleSignOut = async () => {
     await signOut()
@@ -95,6 +98,25 @@ export function Header({ collapsed, onToggleSidebar, syncStatus, lastSync }: Hea
           </Tooltip>
         )}
 
+        {/* Help menu trigger */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHelpOpen(true)}
+              aria-label="Guia de Planilhas"
+              className="gap-1.5 text-[#0066FF] border-[#0066FF]/30 hover:bg-[#0066FF]/10 hover:border-[#0066FF]/50"
+            >
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden sm:inline text-xs font-medium">Guia</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Guia: Planilhas no Sistema</p>
+          </TooltipContent>
+        </Tooltip>
+
         {user && (
           <>
             <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
@@ -115,6 +137,8 @@ export function Header({ collapsed, onToggleSidebar, syncStatus, lastSync }: Hea
           <LogOut className="h-5 w-5" />
         </Button>
       </div>
+
+      <HelpMenu open={helpOpen} onOpenChange={setHelpOpen} />
     </header>
   )
 }

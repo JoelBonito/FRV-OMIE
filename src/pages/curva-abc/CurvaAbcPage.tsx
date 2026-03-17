@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTabFromUrl } from '@/hooks/useTabFromUrl'
 import { type ColumnDef } from '@tanstack/react-table'
 import {
   Bar,
@@ -41,14 +42,12 @@ const ABC_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
   },
 }
 
-type ViewMode = 'valor' | 'quantidade'
-
 function formatNumber(n: number): string {
   return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(n)
 }
 
 export function CurvaAbcPage() {
-  const [mode, setMode] = useState<ViewMode>('valor')
+  const [mode, setMode] = useTabFromUrl('tab', 'valor')
   const [search, setSearch] = useState('')
 
   const { data: dataValor, isLoading: loadingValor } = useCurvaAbcValor()
@@ -242,7 +241,7 @@ export function CurvaAbcPage() {
             title={`Curva ABC — ${mode === 'valor' ? 'Por Valor' : 'Por Quantidade'}`}
             fileName={`curva_abc_${mode}`}
           />
-          <Tabs value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
+          <Tabs value={mode} onValueChange={setMode}>
             <TabsList>
               <TabsTrigger value="valor">Por Valor</TabsTrigger>
               <TabsTrigger value="quantidade">Por Quantidade</TabsTrigger>

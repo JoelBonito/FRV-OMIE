@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
 import {
-  Plus,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -10,6 +9,7 @@ import {
   List,
   BarChart3,
   Users,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TableCell, TableRow } from '@/components/ui/table'
@@ -103,10 +111,7 @@ export function VendasPage() {
     return vendas.filter((v) => v.status === 'pendente')
   }, [vendas])
 
-  function handleCreate() {
-    setEditingVenda(null)
-    setDialogOpen(true)
-  }
+
 
   function handleEdit(venda: VendaWithRelations) {
     setEditingVenda(venda)
@@ -302,28 +307,22 @@ export function VendasPage() {
             title="Relatório de Vendas"
             fileName="vendas"
           />
-          <Button
-            className="gap-2 bg-[#0066FF] hover:bg-[#0052CC] shadow-lg shadow-[#0066FF]/20"
-            onClick={handleCreate}
-          >
-            <Plus className="h-4 w-4" />
-            Registrar Venda
-          </Button>
+
         </div>
       </div>
 
       {/* View Mode Tabs */}
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-        <TabsList>
-          <TabsTrigger value="registros" className="gap-1.5">
+        <TabsList className="bg-slate-100/80 p-1 border border-slate-200/50 h-auto">
+          <TabsTrigger value="registros" className="gap-2 h-9 px-4 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all">
             <List className="h-4 w-4" />
             Registros
           </TabsTrigger>
-          <TabsTrigger value="resumo" className="gap-1.5">
+          <TabsTrigger value="resumo" className="gap-2 h-9 px-4 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all">
             <BarChart3 className="h-4 w-4" />
             Resumo Global
           </TabsTrigger>
-          <TabsTrigger value="vendedores" className="gap-1.5">
+          <TabsTrigger value="vendedores" className="gap-2 h-9 px-4 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all">
             <Users className="h-4 w-4" />
             Por Vendedor
           </TabsTrigger>
@@ -332,136 +331,175 @@ export function VendasPage() {
         {/* ── Tab: Registros ── */}
         <TabsContent value="registros" className="space-y-6 mt-4">
           {/* Filters */}
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Mês
-              </label>
-              <Select
-                value={String(filterMes ?? 'todos')}
-                onValueChange={(v) =>
-                  setFilterMes(v === 'todos' ? undefined : Number(v))
-                }
-              >
-                <SelectTrigger className="h-9 w-[120px] text-xs">
-                  <SelectValue placeholder="Mês" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  {MONTHS.map((m, i) => (
-                    <SelectItem key={i} value={String(i + 1)}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Ano
-              </label>
-              <Select
-                value={String(filterAno)}
-                onValueChange={(v) => setFilterAno(Number(v))}
-              >
-                <SelectTrigger className="h-9 w-[100px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[CURRENT_YEAR - 1, CURRENT_YEAR].map((y) => (
-                    <SelectItem key={y} value={String(y)}>
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Vendedor
-              </label>
-              <Select
-                value={filterVendedor ?? 'todos'}
-                onValueChange={(v) =>
-                  setFilterVendedor(v === 'todos' ? undefined : v)
-                }
-              >
-                <SelectTrigger className="h-9 w-[140px] text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  {vendedores?.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Tipo
-              </label>
-              <Select
-                value={filterTipo ?? 'todos'}
-                onValueChange={(v) =>
-                  setFilterTipo(v === 'todos' ? undefined : v)
-                }
-              >
-                <SelectTrigger className="h-9 w-[160px] text-xs">
-                  <SelectValue placeholder="Todos os tipos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os tipos</SelectItem>
-                  {CLIENT_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Status
-              </label>
-              <Select
-                value={filterStatus ?? 'todos'}
-                onValueChange={(v) =>
-                  setFilterStatus(v === 'todos' ? undefined : v)
-                }
-              >
-                <SelectTrigger className="h-9 w-[130px] text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  {SALE_STATUSES.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
+          <div className="flex flex-col sm:flex-row gap-3 items-end">
             <div className="space-y-1 flex-1 min-w-[200px]">
-              <label className="text-xs font-medium text-muted-foreground">
-                Busca
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <Search className="h-3 w-3 text-[#0066FF]" />
+                Buscar Venda
               </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar cliente, vendedor, NF..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-9 text-xs"
-                />
+              <Input
+                placeholder="Por cliente, vendedor ou NF..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-9 text-xs border-slate-200 focus-visible:ring-[#0066FF]/20 transition-all shadow-sm"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Mês</label>
+                <Select
+                  value={String(filterMes ?? 'todos')}
+                  onValueChange={(v) =>
+                    setFilterMes(v === 'todos' ? undefined : Number(v))
+                  }
+                >
+                  <SelectTrigger className="h-9 w-[120px] text-xs border-slate-200 shadow-sm focus:ring-[#0066FF]/20">
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos" className="font-bold">Todos</SelectItem>
+                    {MONTHS.map((m, i) => (
+                      <SelectItem key={i} value={String(i + 1)}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Ano</label>
+                <Select
+                  value={String(filterAno)}
+                  onValueChange={(v) => setFilterAno(Number(v))}
+                >
+                  <SelectTrigger className="h-9 w-[100px] text-xs border-slate-200 shadow-sm focus:ring-[#0066FF]/20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[CURRENT_YEAR - 1, CURRENT_YEAR].map((y) => (
+                      <SelectItem key={y} value={String(y)}>
+                        {y}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 opacity-0 mb-1 block">Filtros</label>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" className="h-9 gap-2 border-slate-200 hover:bg-slate-50 relative shadow-sm">
+                      <SlidersHorizontal className="h-4 w-4 text-[#0066FF]" />
+                      <span className="hidden sm:inline font-bold">Avançados</span>
+                      {(filterVendedor || filterTipo || filterStatus) && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#0066FF] text-[10px] font-bold text-white ring-2 ring-white">
+                          {[filterVendedor, filterTipo, filterStatus].filter(Boolean).length}
+                        </span>
+                      )}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[340px] sm:w-[400px]">
+                    <SheetHeader>
+                      <SheetTitle className="font-extrabold flex items-center gap-2">
+                        <SlidersHorizontal className="h-5 w-5 text-[#0066FF]" />
+                        Filtros Avançados
+                      </SheetTitle>
+                      <SheetDescription>
+                        Filtros detalhados para refinar a busca de vendas.
+                      </SheetDescription>
+                    </SheetHeader>
+                    
+                    <div className="flex flex-col gap-6 mt-8">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">
+                          Vendedor
+                        </label>
+                        <Select
+                          value={filterVendedor ?? 'todos'}
+                          onValueChange={(v) =>
+                            setFilterVendedor(v === 'todos' ? undefined : v)
+                          }
+                        >
+                          <SelectTrigger className="h-10 text-sm border-slate-200 focus:ring-[#0066FF]/20">
+                            <SelectValue placeholder="Todos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos" className="font-bold">Todos</SelectItem>
+                            {vendedores?.map((v) => (
+                              <SelectItem key={v.id} value={v.id}>
+                                {v.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">
+                          Tipo de Cliente
+                        </label>
+                        <Select
+                          value={filterTipo ?? 'todos'}
+                          onValueChange={(v) =>
+                            setFilterTipo(v === 'todos' ? undefined : v)
+                          }
+                        >
+                          <SelectTrigger className="h-10 text-sm border-slate-200 focus:ring-[#0066FF]/20">
+                            <SelectValue placeholder="Todos os tipos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos" className="font-bold">Todos os tipos</SelectItem>
+                            {CLIENT_TYPES.map((t) => (
+                              <SelectItem key={t.value} value={t.value}>
+                                {t.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">
+                          Status da Venda
+                        </label>
+                        <Select
+                          value={filterStatus ?? 'todos'}
+                          onValueChange={(v) =>
+                            setFilterStatus(v === 'todos' ? undefined : v)
+                          }
+                        >
+                          <SelectTrigger className="h-10 text-sm border-slate-200 focus:ring-[#0066FF]/20">
+                            <SelectValue placeholder="Todos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos" className="font-bold">Todos</SelectItem>
+                            {SALE_STATUSES.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setFilterVendedor(undefined)
+                          setFilterTipo(undefined)
+                          setFilterStatus(undefined)
+                        }}
+                        className="mt-4 border-slate-200 hover:bg-slate-50 transition-colors font-bold text-slate-600"
+                        disabled={!filterVendedor && !filterTipo && !filterStatus}
+                      >
+                        Limpar Filtros Avançados
+                      </Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
               </div>
             </div>
           </div>

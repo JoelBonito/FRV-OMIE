@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTabFromUrl } from '@/hooks/useTabFromUrl'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
@@ -37,6 +38,8 @@ const MONTH_OPTIONS = MONTHS.map((label, i) => ({ value: i + 1, label }))
 
 export function ComparacaoPage() {
   // Period selectors: A = reference (older), B = current (newer)
+  const [tab, setTab] = useTabFromUrl('tab', 'administradoras')
+
   const [anoA, setAnoA] = useState(CURRENT_MONTH === 1 ? CURRENT_YEAR - 1 : CURRENT_YEAR)
   const [mesA, setMesA] = useState(CURRENT_MONTH === 1 ? 12 : CURRENT_MONTH - 1)
   const [anoB, setAnoB] = useState(CURRENT_YEAR)
@@ -185,14 +188,14 @@ export function ComparacaoPage() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="administradoras" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="administradoras">Administradoras</TabsTrigger>
-          <TabsTrigger value="condominios">Condominios</TabsTrigger>
-          <TabsTrigger value="vendedores">Vendedores</TabsTrigger>
-          <TabsTrigger value="tipos">Tipo Cliente</TabsTrigger>
-          <TabsTrigger value="perdidos">Perdidos</TabsTrigger>
-          <TabsTrigger value="novos">Novos</TabsTrigger>
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+        <TabsList className="bg-slate-100/80 p-1 border border-slate-200/50 h-auto grid w-full grid-cols-6 gap-1">
+          <TabsTrigger value="administradoras" className="h-9 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all font-medium text-xs sm:text-sm">Administradoras</TabsTrigger>
+          <TabsTrigger value="condominios" className="h-9 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all font-medium text-xs sm:text-sm">Condominios</TabsTrigger>
+          <TabsTrigger value="vendedores" className="h-9 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all font-medium text-xs sm:text-sm">Vendedores</TabsTrigger>
+          <TabsTrigger value="tipos" className="h-9 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all font-medium text-xs sm:text-sm">Tipo Cliente</TabsTrigger>
+          <TabsTrigger value="perdidos" className="h-9 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all font-medium text-xs sm:text-sm">Perdidos</TabsTrigger>
+          <TabsTrigger value="novos" className="h-9 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all font-medium text-xs sm:text-sm">Novos</TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Administradoras */}
