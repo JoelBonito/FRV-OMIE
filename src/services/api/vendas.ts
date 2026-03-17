@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/supabase-helpers'
 import type { Tables, InsertTables, UpdateTables } from '@/lib/types/database'
 
 type Venda = Tables<'vendas'>
@@ -15,37 +16,37 @@ export async function getVendas(filters?: {
   tipo_cliente?: string
   status?: string
 }): Promise<VendaWithRelations[]> {
-  let query = supabase
-    .from('vendas')
-    .select('*, clientes(nome, tipo), vendedores(nome)')
-    .order('ano', { ascending: false })
-    .order('mes', { ascending: false })
+  return fetchAll<VendaWithRelations>(() => {
+    let query = supabase
+      .from('vendas')
+      .select('*, clientes(nome, tipo), vendedores(nome)')
+      .order('ano', { ascending: false })
+      .order('mes', { ascending: false })
 
-  if (filters?.ano) query = query.eq('ano', filters.ano)
-  if (filters?.mes) query = query.eq('mes', filters.mes)
-  if (filters?.vendedor_id)
-    query = query.eq('vendedor_id', filters.vendedor_id)
-  if (filters?.tipo_cliente)
-    query = query.eq('tipo_cliente', filters.tipo_cliente)
-  if (filters?.status)
-    query = query.eq(
-      'status',
-      filters.status as 'faturado' | 'pendente' | 'cancelado'
-    )
+    if (filters?.ano) query = query.eq('ano', filters.ano)
+    if (filters?.mes) query = query.eq('mes', filters.mes)
+    if (filters?.vendedor_id)
+      query = query.eq('vendedor_id', filters.vendedor_id)
+    if (filters?.tipo_cliente)
+      query = query.eq('tipo_cliente', filters.tipo_cliente)
+    if (filters?.status)
+      query = query.eq(
+        'status',
+        filters.status as 'faturado' | 'pendente' | 'cancelado'
+      )
 
-  const { data, error } = await query
-  if (error) throw error
-  return (data ?? []) as VendaWithRelations[]
+    return query
+  })
 }
 
 export async function getVendasSemClassificacao(): Promise<Venda[]> {
-  const { data, error } = await supabase
-    .from('vendas')
-    .select('*')
-    .is('cliente_id', null)
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as Venda[]
+  return fetchAll<Venda>(() =>
+    supabase
+      .from('vendas')
+      .select('*')
+      .is('cliente_id', null)
+      .order('created_at', { ascending: false }),
+  )
 }
 
 export async function createVenda(

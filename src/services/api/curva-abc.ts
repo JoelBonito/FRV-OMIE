@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/supabase-helpers'
 
 export interface CurvaAbcItem {
   ordem: number
@@ -20,19 +21,19 @@ export interface CurvaAbcQuantidadeItem extends CurvaAbcItem {
 }
 
 export async function getCurvaAbcValor(): Promise<CurvaAbcValorItem[]> {
-  const { data, error } = await supabase
-    .from('v_curva_abc_valor')
-    .select('*')
-    .order('ordem', { ascending: true })
-  if (error) throw error
-  return (data ?? []) as CurvaAbcValorItem[]
+  return fetchAll<CurvaAbcValorItem>(() =>
+    supabase
+      .from('v_curva_abc_valor')
+      .select('*')
+      .order('ordem', { ascending: true }),
+  )
 }
 
 export async function getCurvaAbcQuantidade(): Promise<CurvaAbcQuantidadeItem[]> {
-  const { data, error } = await supabase
-    .from('v_curva_abc_quantidade')
-    .select('*')
-    .order('ordem', { ascending: true })
-  if (error) throw error
-  return (data ?? []) as CurvaAbcQuantidadeItem[]
+  return fetchAll<CurvaAbcQuantidadeItem>(() =>
+    supabase
+      .from('v_curva_abc_quantidade')
+      .select('*')
+      .order('ordem', { ascending: true }),
+  )
 }

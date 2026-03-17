@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/supabase-helpers'
 import type { Tables, InsertTables, UpdateTables } from '@/lib/types/database'
 
 type Cliente = Tables<'clientes'>
@@ -8,12 +9,12 @@ export interface ClienteWithVendedor extends Cliente {
 }
 
 export async function getClientes(): Promise<ClienteWithVendedor[]> {
-  const { data, error } = await supabase
-    .from('clientes')
-    .select('*, vendedores(nome)')
-    .order('nome')
-  if (error) throw error
-  return (data ?? []) as ClienteWithVendedor[]
+  return fetchAll<ClienteWithVendedor>(() =>
+    supabase
+      .from('clientes')
+      .select('*, vendedores(nome)')
+      .order('nome'),
+  )
 }
 
 export async function getCliente(id: string) {
