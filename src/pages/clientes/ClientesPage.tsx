@@ -110,6 +110,7 @@ export function ClientesPage() {
     {
       id: 'vendedor',
       header: 'Vendedor',
+      meta: { className: 'hidden md:table-cell' },
       cell: ({ row }) => {
         const v = row.original.vendedores
         return <span className="text-muted-foreground">{v?.nome ?? '—'}</span>
@@ -137,6 +138,7 @@ export function ClientesPage() {
     {
       accessorKey: 'email',
       header: 'Email',
+      meta: { className: 'hidden md:table-cell' },
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
           {row.getValue('email') || '—'}
@@ -151,7 +153,7 @@ export function ClientesPage() {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Button variant="ghost" size="sm" className="h-10 w-10 p-0">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -246,7 +248,7 @@ export function ClientesPage() {
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">Tipo</label>
           <Select value={filterTipo} onValueChange={setFilterTipo}>
-            <SelectTrigger className="h-9 w-[160px] text-xs">
+            <SelectTrigger className="h-9 w-full sm:w-[160px] text-xs">
               <SelectValue placeholder="Todos os tipos" />
             </SelectTrigger>
             <SelectContent>
@@ -262,7 +264,7 @@ export function ClientesPage() {
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">Status</label>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="h-9 w-[140px] text-xs">
+            <SelectTrigger className="h-9 w-full sm:w-[140px] text-xs">
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>

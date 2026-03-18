@@ -87,13 +87,13 @@ export function ComparacaoPage() {
             Analise de churn, retencao e evolucao entre dois meses
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <PeriodSelector
             label="Periodo A"
             ano={anoA} mes={mesA}
             onAnoChange={setAnoA} onMesChange={setMesA}
           />
-          <span className="text-muted-foreground font-bold">vs</span>
+          <span className="text-muted-foreground font-bold hidden sm:inline">vs</span>
           <PeriodSelector
             label="Periodo B"
             ano={anoB} mes={mesB}
@@ -189,7 +189,7 @@ export function ComparacaoPage() {
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <TabsList className="bg-slate-100/80 p-1 border border-slate-200/50 h-auto grid w-full grid-cols-6 gap-1">
+        <TabsList className="bg-slate-100/80 p-1 border border-slate-200/50 h-auto grid w-full grid-cols-3 sm:grid-cols-6 gap-1">
           <TabsTrigger value="administradoras" className="h-9 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all font-medium text-xs sm:text-sm">Administradoras</TabsTrigger>
           <TabsTrigger value="condominios" className="h-9 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all font-medium text-xs sm:text-sm">Condominios</TabsTrigger>
           <TabsTrigger value="vendedores" className="h-9 data-[state=active]:bg-white data-[state=active]:text-[#0066FF] data-[state=active]:shadow-sm rounded-md transition-all font-medium text-xs sm:text-sm">Vendedores</TabsTrigger>
@@ -217,7 +217,7 @@ export function ComparacaoPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
-                        <th className="pb-3 pr-4 font-medium">Administradora</th>
+                        <th className="pb-3 pr-4 font-medium sticky left-0 z-10 bg-card">Administradora</th>
                         <th className="pb-3 pr-4 font-medium text-right">Condominios {labelA}</th>
                         <th className="pb-3 pr-4 font-medium text-right">Condominios {labelB}</th>
                         <th className="pb-3 pr-4 font-medium text-right">Retidos</th>
@@ -235,7 +235,7 @@ export function ComparacaoPage() {
                     <tbody>
                       {adminData.map((row) => (
                         <tr key={row.administradora} className="border-b last:border-0 hover:bg-muted/50">
-                          <td className="py-3 pr-4 font-medium">{row.administradora}</td>
+                          <td className="py-3 pr-4 font-medium sticky left-0 z-10 bg-card">{row.administradora}</td>
                           <td className="py-3 pr-4 text-right">{row.condominios_mes1}</td>
                           <td className="py-3 pr-4 text-right">{row.condominios_mes2}</td>
                           <td className="py-3 pr-4 text-right">
@@ -309,7 +309,7 @@ export function ComparacaoPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b text-left text-muted-foreground">
-                          <th className="pb-3 pr-4 font-medium">Administradora</th>
+                          <th className="pb-3 pr-4 font-medium sticky left-0 z-10 bg-card">Administradora</th>
                           <th className="pb-3 pr-4 font-medium">Cliente</th>
                           <th className="pb-3 pr-4 font-medium text-right">Fat. {labelA}</th>
                           <th className="pb-3 pr-4 font-medium text-right">Fat. {labelB}</th>
@@ -322,7 +322,7 @@ export function ComparacaoPage() {
                       <tbody>
                         {allClientes.map((row) => (
                           <tr key={row.cliente_id} className="border-b last:border-0 hover:bg-muted/50">
-                            <td className="py-2.5 pr-4 text-muted-foreground">{row.administradora ?? '-'}</td>
+                            <td className="py-2.5 pr-4 text-muted-foreground sticky left-0 z-10 bg-card">{row.administradora ?? '-'}</td>
                             <td className="py-2.5 pr-4 font-medium">{row.nome}</td>
                             <td className="py-2.5 pr-4 text-right tabular-nums">{formatCurrency(row.faturamento_mes1)}</td>
                             <td className="py-2.5 pr-4 text-right tabular-nums">{formatCurrency(row.faturamento_mes2)}</td>
@@ -526,7 +526,7 @@ export function ComparacaoPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b text-left text-muted-foreground">
-                          <th className="pb-3 pr-4 font-medium">Cliente</th>
+                          <th className="pb-3 pr-4 font-medium sticky left-0 z-10 bg-card">Cliente</th>
                           <th className="pb-3 pr-4 font-medium">Administradora</th>
                           <th className="pb-3 pr-4 font-medium">Tipo</th>
                           <th className="pb-3 pr-4 font-medium">Vendedor</th>
@@ -538,7 +538,7 @@ export function ComparacaoPage() {
                       <tbody>
                         {perdidos.map((row) => (
                           <tr key={row.cliente_id} className="border-b last:border-0 hover:bg-muted/50">
-                            <td className="py-2.5 pr-4 font-medium">{row.nome}</td>
+                            <td className="py-2.5 pr-4 font-medium sticky left-0 z-10 bg-card">{row.nome}</td>
                             <td className="py-2.5 pr-4 text-muted-foreground">{row.administradora ?? '-'}</td>
                             <td className="py-2.5 pr-4">
                               <Badge variant="outline" className="text-xs">
@@ -644,7 +644,7 @@ function PeriodSelector({
     <div className="flex items-center gap-1.5">
       <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{label}:</span>
       <Select value={String(mes)} onValueChange={(v) => onMesChange(Number(v))}>
-        <SelectTrigger className="h-8 w-[80px] text-xs">
+        <SelectTrigger className="h-8 w-full sm:w-[80px] text-xs">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -654,7 +654,7 @@ function PeriodSelector({
         </SelectContent>
       </Select>
       <Select value={String(ano)} onValueChange={(v) => onAnoChange(Number(v))}>
-        <SelectTrigger className="h-8 w-[80px] text-xs">
+        <SelectTrigger className="h-8 w-full sm:w-[80px] text-xs">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

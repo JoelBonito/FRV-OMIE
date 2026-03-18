@@ -10,6 +10,7 @@ import {
   Briefcase,
   RefreshCw,
   Settings,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -40,9 +41,14 @@ const NAV_ITEMS: NavItem[] = [
 
 interface SidebarProps {
   collapsed: boolean
+  isMobile?: boolean
+  onCloseMobile?: () => void
 }
 
-export function Sidebar({ collapsed }: SidebarProps) {
+export function Sidebar({ collapsed, isMobile, onCloseMobile }: SidebarProps) {
+  const handleNavClick = () => {
+    if (isMobile && onCloseMobile) onCloseMobile()
+  }
   const { hasMinRole } = useRole()
   const { user, role } = useAuth()
 
@@ -56,17 +62,29 @@ export function Sidebar({ collapsed }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300',
-        collapsed ? 'w-16' : 'w-60'
+        'flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300',
+        isMobile
+          ? 'h-full w-60'
+          : 'fixed inset-y-0 left-0 z-40',
+        !isMobile && (collapsed ? 'w-16' : 'w-60')
       )}
     >
       {/* Logo */}
       <div
         className={cn(
-          'flex h-28 shrink-0 flex-col justify-center border-b border-sidebar-border bg-sidebar-accent/5',
+          'relative flex h-28 shrink-0 flex-col justify-center border-b border-sidebar-border bg-sidebar-accent/5',
           collapsed ? 'items-center px-2' : 'px-8'
         )}
       >
+        {isMobile && onCloseMobile && (
+          <button
+            onClick={onCloseMobile}
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-white transition-colors"
+            aria-label="Close sidebar"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
         <div className="flex items-center gap-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/5 p-2 ring-1 ring-white/15 shadow-2xl">
             <img
@@ -100,9 +118,10 @@ export function Sidebar({ collapsed }: SidebarProps) {
             key={to}
             to={to}
             end={to === '/'}
+            onClick={handleNavClick}
             className={({ isActive }) =>
               cn(
-                'relative w-full flex items-center gap-3 overflow-hidden rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200',
+                'relative w-full flex items-center gap-3 overflow-hidden rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200',
                 isActive
                   ? 'text-white shadow-lg shadow-[#0066FF]/20'
                   : 'text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent'

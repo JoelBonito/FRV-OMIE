@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PanelLeftClose, PanelLeftOpen, LogOut, RefreshCw, CheckCircle2, BookOpen } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, LogOut, RefreshCw, CheckCircle2, BookOpen, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useAuth } from '@/contexts/AuthContext'
+import { cn } from '@/lib/utils'
 import { ROLE_LABELS } from '@/lib/roles'
 import { APP_NAME, ROUTES } from '@/lib/constants'
 import { ROLE_BADGE_CLASSES } from '@/lib/theme-constants'
@@ -44,7 +45,7 @@ export function Header({ collapsed, onToggleSidebar, syncStatus, lastSync }: Hea
   const badgeClass = ROLE_BADGE_CLASSES[role] ?? ROLE_BADGE_CLASSES.vendedor
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between shadow-sm bg-background/80 backdrop-blur-md px-6 border-b">
+    <header className="sticky top-0 z-[45] flex h-16 items-center justify-between shadow-sm bg-background/80 backdrop-blur-md px-3 md:px-6 pt-[env(safe-area-inset-top)] border-b">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -52,11 +53,14 @@ export function Header({ collapsed, onToggleSidebar, syncStatus, lastSync }: Hea
           onClick={onToggleSidebar}
           aria-label="Toggle sidebar"
         >
-          {collapsed ? (
-            <PanelLeftOpen className="h-5 w-5" />
-          ) : (
-            <PanelLeftClose className="h-5 w-5" />
-          )}
+          <Menu className="h-5 w-5 md:hidden" />
+          <div className="hidden md:block">
+            {collapsed ? (
+              <PanelLeftOpen className="h-5 w-5" />
+            ) : (
+              <PanelLeftClose className="h-5 w-5" />
+            )}
+          </div>
         </Button>
         <h1
           className="text-lg font-semibold md:hidden"
@@ -122,7 +126,7 @@ export function Header({ collapsed, onToggleSidebar, syncStatus, lastSync }: Hea
             <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
               {user.email}
             </span>
-            <Badge variant="outline" className={badgeClass}>
+            <Badge variant="outline" className={cn('hidden sm:inline-flex', badgeClass)}>
               {ROLE_LABELS[role]}
             </Badge>
           </>

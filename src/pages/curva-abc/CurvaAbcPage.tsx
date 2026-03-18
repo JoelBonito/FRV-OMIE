@@ -131,6 +131,7 @@ export function CurvaAbcPage() {
       },
       {
         accessorKey: 'pct_participacao',
+        meta: { className: 'hidden md:table-cell' },
         header: ({ column }) => (
           <SortableHeader column={column}>
             <span className="w-full text-right">% Part.</span>
@@ -144,6 +145,7 @@ export function CurvaAbcPage() {
       },
       {
         accessorKey: 'pct_acumulado',
+        meta: { className: 'hidden md:table-cell' },
         header: ({ column }) => (
           <SortableHeader column={column}>
             <span className="w-full text-right">% Acum.</span>
@@ -157,6 +159,7 @@ export function CurvaAbcPage() {
       },
       {
         accessorKey: 'pedidos',
+        meta: { className: 'hidden md:table-cell' },
         header: ({ column }) => (
           <SortableHeader column={column}>
             <span className="w-full text-right">Pedidos</span>

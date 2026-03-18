@@ -120,7 +120,7 @@ export function CarteirasPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Header Premium */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-slate-950 p-6 rounded-xl border shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-slate-950 p-4 md:p-6 rounded-xl border shadow-sm">
         <div className="space-y-1">
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
             <UserCircle2 className="h-8 w-8 text-[#0066FF]" />
@@ -148,7 +148,7 @@ export function CarteirasPage() {
           </div>
         </CardHeader>
         <CardContent className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
             {/* Vendedor Selector */}
             <div className="md:col-span-4 space-y-2">
               <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
@@ -222,7 +222,7 @@ export function CarteirasPage() {
           <CardContent className="p-6">
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Clientes</span>
             <p className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-wider mt-0.5">Total Geral</p>
-            <div className="text-3xl font-black mt-1 font-mono text-slate-900">{totalClientes}</div>
+            <div className="text-2xl md:text-3xl font-black mt-1 font-mono text-slate-900">{totalClientes}</div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-[#00C896] shadow-sm">
@@ -231,7 +231,7 @@ export function CarteirasPage() {
             <p className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-wider mt-0.5">
               {selectedYears.sort().join(' - ')}
             </p>
-            <div className="text-3xl font-black mt-1 font-mono text-slate-900">{formatCurrency(totalFaturamento)}</div>
+            <div className="text-2xl md:text-3xl font-black mt-1 font-mono text-slate-900">{formatCurrency(totalFaturamento)}</div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-amber-500 shadow-sm">
@@ -240,7 +240,7 @@ export function CarteirasPage() {
             <p className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-wider mt-0.5">
               {selectedYears.sort().join(' - ')}
             </p>
-            <div className="text-3xl font-black mt-1 font-mono text-slate-900">{formatCurrency(faturamentoMedio)}</div>
+            <div className="text-2xl md:text-3xl font-black mt-1 font-mono text-slate-900">{formatCurrency(faturamentoMedio)}</div>
           </CardContent>
         </Card>
       </div>
@@ -262,7 +262,7 @@ export function CarteirasPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="sticky left-0 z-20 bg-slate-50 px-3 py-2.5 text-left font-bold text-slate-600 min-w-[200px] border-r text-[10px] uppercase tracking-wider">
+                    <th className="sticky left-0 z-20 bg-slate-50 px-3 py-2.5 text-left font-bold text-slate-600 min-w-[140px] md:min-w-[200px] border-r text-[10px] uppercase tracking-wider">
                       CLIENTE
                     </th>
                     {selectedVendedor === 'todos' && (
@@ -292,7 +292,7 @@ export function CarteirasPage() {
                       <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/80 px-3 py-2 font-bold text-slate-900 border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
                         <div className="flex flex-col">
                           <span className="truncate max-w-[190px] text-[13px]">{row.nome}</span>
-                          <span className="text-[8px] text-muted-foreground font-medium uppercase tracking-tighter mt-0.5 opacity-70">
+                          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter mt-0.5 opacity-70">
                             {row.tipo?.replace('_', ' ')}
                           </span>
                         </div>

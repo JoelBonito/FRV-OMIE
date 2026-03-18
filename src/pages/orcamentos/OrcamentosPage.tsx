@@ -186,6 +186,7 @@ export function OrcamentosPage() {
     {
       id: 'vendedor',
       header: 'Vendedor',
+      meta: { className: 'hidden md:table-cell' },
       cell: ({ row }) => (
         <span className="text-muted-foreground">
           {row.original.vendedores?.nome ?? '—'}
@@ -232,6 +233,7 @@ export function OrcamentosPage() {
     {
       accessorKey: 'previsao_faturamento',
       header: 'Previsão',
+      meta: { className: 'hidden md:table-cell' },
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground tabular-nums">
           {formatDate(row.getValue('previsao_faturamento') as string | null)}

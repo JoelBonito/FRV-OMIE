@@ -119,7 +119,7 @@ function OmieStatusSection({ config }: { config: ConfigOmieSafe | null }) {
                 placeholder="App Key"
                 value={appKey}
                 onChange={(e) => setAppKey(e.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                className="w-full rounded-md border bg-background px-3 py-2 text-base sm:text-sm"
               />
               <div className="relative">
                 <input
@@ -127,7 +127,7 @@ function OmieStatusSection({ config }: { config: ConfigOmieSafe | null }) {
                   placeholder="App Secret"
                   value={appSecret}
                   onChange={(e) => setAppSecret(e.target.value)}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm pr-10"
+                  className="w-full rounded-md border bg-background px-3 py-2 text-base sm:text-sm pr-10"
                 />
                 <button
                   type="button"
@@ -154,12 +154,12 @@ function OmieStatusSection({ config }: { config: ConfigOmieSafe | null }) {
                   placeholder="Webhook Secret"
                   value={webhookSecret}
                   onChange={(e) => setWebhookSecret(e.target.value)}
-                  className="flex-1 rounded-md border bg-background px-3 py-2 text-sm font-mono"
+                  className="flex-1 rounded-md border bg-background px-3 py-2 text-base sm:text-sm font-mono"
                 />
                 <button
                   onClick={handleGenerateSecret}
                   disabled={generating}
-                  className="flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
+                  className="flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50 min-h-[44px]"
                 >
                   {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                   Gerar

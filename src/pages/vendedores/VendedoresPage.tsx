@@ -146,7 +146,7 @@ export function VendedoresPage() {
           type="button"
           onClick={() => setFilterStatus('todos')}
           className={cn(
-            "px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]/50",
+            "px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]/50 min-h-[44px]",
             filterStatus === 'todos' ? "bg-white text-[#0066FF] shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
           )}
         >
@@ -156,7 +156,7 @@ export function VendedoresPage() {
           type="button"
           onClick={() => setFilterStatus('ativo')}
           className={cn(
-            "px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]/50",
+            "px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]/50 min-h-[44px]",
             filterStatus === 'ativo' ? "bg-white text-[#0066FF] shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
           )}
         >
@@ -166,7 +166,7 @@ export function VendedoresPage() {
           type="button"
           onClick={() => setFilterStatus('inativo')}
           className={cn(
-            "px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]/50",
+            "px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]/50 min-h-[44px]",
             filterStatus === 'inativo' ? "bg-white text-[#0066FF] shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
           )}
         >
@@ -206,7 +206,7 @@ export function VendedoresPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0"
+                          className="h-10 w-10 p-0"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <MoreHorizontal className="h-4 w-4" />
@@ -251,7 +251,7 @@ export function VendedoresPage() {
         </div>
 
         {/* RIGHT — Stats panel */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 order-first lg:order-last">
           {selected ? (
             <Card className="sticky top-6">
               <CardHeader className="pb-3 px-5 pt-5">

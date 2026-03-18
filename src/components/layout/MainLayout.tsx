@@ -2,12 +2,17 @@ import { useState, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
-import { BottomNav } from './BottomNav'
 import { useAutoSync, useConfigOmie } from '@/hooks/useSync'
 import { cn } from '@/lib/utils'
 
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(max-width: 767px)').matches
+    }
+    return false
+  })
+
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
     setIsMobile(mq.matches)
@@ -42,7 +47,7 @@ export function MainLayout() {
       {/* Mobile overlay */}
       {isMobile && mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-sm"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -51,12 +56,16 @@ export function MainLayout() {
       <div
         className={cn(
           isMobile
-            ? 'fixed left-0 top-0 z-50 transition-transform duration-300'
+            ? 'fixed inset-y-0 left-0 z-[60] transition-transform duration-300'
             : '',
-          isMobile && !mobileOpen ? '-translate-x-full' : 'translate-x-0'
+          isMobile && !mobileOpen ? '-translate-x-full' : isMobile ? 'translate-x-0' : ''
         )}
       >
-        <Sidebar collapsed={isMobile ? false : collapsed} />
+        <Sidebar 
+          collapsed={isMobile ? false : collapsed} 
+          isMobile={isMobile}
+          onCloseMobile={() => setMobileOpen(false)}
+        />
       </div>
 
       <div
@@ -77,13 +86,10 @@ export function MainLayout() {
           syncStatus={syncStatus}
           lastSync={lastSync}
         />
-        <main className={cn('p-5', isMobile && 'pb-20')}>
+        <main className="p-3 md:p-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:pb-5">
           <Outlet />
         </main>
       </div>
-
-      {/* Bottom nav for mobile */}
-      <BottomNav />
     </div>
   )
 }

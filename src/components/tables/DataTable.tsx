@@ -93,7 +93,7 @@ export function DataTable<TData, TValue>({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} className={(header.column.columnDef.meta as Record<string, string>)?.className}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -114,7 +114,7 @@ export function DataTable<TData, TValue>({
                   onClick={() => onRowClick?.(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className={(cell.column.columnDef.meta as Record<string, string>)?.className}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -140,7 +140,7 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <p className="text-sm text-muted-foreground">
             {totalRows} registro(s)
@@ -171,7 +171,7 @@ export function DataTable<TData, TValue>({
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
+            className="h-10 w-10"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -180,7 +180,7 @@ export function DataTable<TData, TValue>({
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
+            className="h-10 w-10"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >

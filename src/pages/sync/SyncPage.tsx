@@ -419,13 +419,13 @@ export function SyncPage() {
             Monitor de integração com o CRM Omie
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select
             value={syncMode}
             onValueChange={(v) => setSyncMode(v as SyncMode)}
             disabled={isSyncing}
           >
-            <SelectTrigger className="w-[170px]">
+            <SelectTrigger className="w-full sm:w-[170px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -442,7 +442,7 @@ export function SyncPage() {
             onValueChange={(v) => setSyncScope(v as SyncScope)}
             disabled={isSyncing}
           >
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -525,8 +525,8 @@ export function SyncPage() {
                     <TableHead>Endpoint</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-right">Processados</TableHead>
-                    <TableHead className="text-right">Criados</TableHead>
-                    <TableHead className="text-right">Atualizados</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">Criados</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">Atualizados</TableHead>
                     <TableHead className="text-right">Duração</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -550,10 +550,10 @@ export function SyncPage() {
                       <TableCell className="text-right tabular-nums font-mono">
                         {log.registros_processados}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums font-mono">
+                      <TableCell className="text-right tabular-nums font-mono hidden md:table-cell">
                         {log.registros_criados}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums font-mono">
+                      <TableCell className="text-right tabular-nums font-mono hidden md:table-cell">
                         {log.registros_atualizados}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-xs font-mono">

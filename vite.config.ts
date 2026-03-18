@@ -11,7 +11,26 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.svg', 'omie-logo.png'],
-      manifest: false,
+      manifest: {
+        name: 'FRV-OMIE Dashboard',
+        short_name: 'FRV-OMIE',
+        description: 'Dashboard de vendas para administradoras e franqueados',
+        theme_color: '#0066FF',
+        background_color: '#0f172a',
+        display: 'standalone',
+        icons: [
+          {
+            src: 'favicon.svg',
+            sizes: '192x192',
+            type: 'image/svg+xml'
+          },
+          {
+            src: 'favicon.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml'
+          }
+        ]
+      },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [

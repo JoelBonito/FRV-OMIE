@@ -155,6 +155,7 @@
     @apply antialiased;
     font-size: 0.9375rem;
     /* ~15px base para um visual mais 'limpo' e elegante, eliminando o aspecto grosseiro */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
   body {
@@ -179,6 +180,13 @@
 
   * {
     @apply border-border outline-ring/50;
+  }
+}
+
+/* Mobile: reset font-size to 16px (1rem) so text-xs doesn't shrink below 12px */
+@media (max-width: 767px) {
+  html {
+    font-size: 1rem;
   }
 }
 

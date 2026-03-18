@@ -216,7 +216,7 @@ export function VendaFormDialog({
           </div>
 
           {/* Valor + Período */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="valor">Valor (R$) *</Label>
               <Input
@@ -278,7 +278,7 @@ export function VendaFormDialog({
           </div>
 
           {/* Tipo + Status + NF */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Tipo Cliente</Label>
               <Select

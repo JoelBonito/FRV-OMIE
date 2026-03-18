@@ -208,12 +208,12 @@ export function DashboardPage() {
             Visão geral de vendas e faturamento.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select
             value={String(mes)}
             onValueChange={(v) => setMes(Number(v))}
           >
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-full sm:w-[120px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -228,7 +228,7 @@ export function DashboardPage() {
             value={String(ano)}
             onValueChange={(v) => setAno(Number(v))}
           >
-            <SelectTrigger className="w-[100px]">
+            <SelectTrigger className="w-full sm:w-[100px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -309,7 +309,7 @@ export function DashboardPage() {
       {/* Charts row 1: Line + Donut */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         {/* Line chart — Evolução Mensal */}
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3 min-w-0">
           <CardHeader>
             <CardTitle className="text-sm font-bold tracking-tight uppercase text-muted-foreground/80">Evolução Mensal</CardTitle>
           </CardHeader>
@@ -334,6 +334,7 @@ export function DashboardPage() {
                     dataKey="name"
                     tick={{ fontSize: 12 }}
                     tickLine={false}
+                    interval="preserveStartEnd"
                   />
                   <YAxis
                     tickFormatter={currencyTick}
@@ -383,7 +384,7 @@ export function DashboardPage() {
         </Card>
 
         {/* Donut chart — Distribuição por Tipo */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold tracking-tight uppercase text-muted-foreground/80">Distribuição por Tipo</CardTitle>
             <p className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-wider mt-0.5">
@@ -450,7 +451,7 @@ export function DashboardPage() {
       {/* Charts row 2: Stacked Bar + Top Vendedores */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         {/* Stacked bar chart — Vendas por Tipo */}
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3 min-w-0">
           <CardHeader>
             <CardTitle className="text-sm font-bold tracking-tight uppercase text-muted-foreground/80">
               Vendas por Tipo (Mensal)
@@ -520,7 +521,7 @@ export function DashboardPage() {
         </Card>
 
         {/* Top Vendedores ranking */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold tracking-tight uppercase text-muted-foreground/80">Top Vendedores</CardTitle>
             <p className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-wider mt-0.5">

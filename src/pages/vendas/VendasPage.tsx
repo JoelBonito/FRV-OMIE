@@ -154,6 +154,7 @@ export function VendasPage() {
     {
       id: 'vendedor',
       header: 'Vendedor',
+      meta: { className: 'hidden md:table-cell' },
       cell: ({ row }) => (
         <span className="text-muted-foreground">
           {row.original.vendedores?.nome ?? '—'}
@@ -163,6 +164,7 @@ export function VendasPage() {
     {
       accessorKey: 'tipo_cliente',
       header: 'Tipo',
+      meta: { className: 'hidden md:table-cell' },
       cell: ({ row }) => {
         const tipo = row.getValue('tipo_cliente') as string
         const color = TYPE_BADGE_COLORS[tipo]
@@ -207,6 +209,7 @@ export function VendasPage() {
     {
       accessorKey: 'nota_fiscal',
       header: 'NF',
+      meta: { className: 'hidden md:table-cell' },
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
           {row.getValue('nota_fiscal') || '—'}
@@ -345,7 +348,7 @@ export function VendasPage() {
               />
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700">Mês</label>
                 <Select
@@ -401,7 +404,7 @@ export function VendasPage() {
                       )}
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="right" className="w-[340px] sm:w-[400px]">
+                  <SheetContent side="right" className="w-full sm:w-[400px]">
                     <SheetHeader>
                       <SheetTitle className="font-extrabold flex items-center gap-2">
                         <SlidersHorizontal className="h-5 w-5 text-[#0066FF]" />
