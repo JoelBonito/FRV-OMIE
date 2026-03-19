@@ -44,7 +44,7 @@ import {
   useVendasMesCount,
   useVendedores,
 } from '@/hooks/useDashboard'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { formatCurrency, formatMonthYear } from '@/lib/formatters'
 import { MONTHS, ROUTES } from '@/lib/constants'
 import { useTopQuedas, useClientesChurn } from '@/hooks/useComparacao'
@@ -66,7 +66,30 @@ function CurrencyTooltipFormatter(value: number | undefined) {
   return formatCurrency(value)
 }
 
+// Map donut/bar label → tipo_cliente query param
+const TYPE_NAME_TO_PARAM: Record<string, string> = {
+  [TYPE_LABELS.administradora]: 'administradora',
+  [TYPE_LABELS.sindico]: 'sindico',
+  [TYPE_LABELS.empresa]: 'empresa',
+  [TYPE_LABELS.consumidor_final]: 'consumidor_final',
+  Administradoras: 'administradora',
+  'Síndicos': 'sindico',
+  Empresas: 'empresa',
+  'Consumidor Final': 'consumidor_final',
+}
+
+// Parse "Jan/2026" → { mes: 1, ano: 2026 }
+function parseMonthLabel(label: string): { mes: number; ano: number } | null {
+  const parts = label.split('/')
+  if (parts.length !== 2) return null
+  const mesIdx = MONTHS.indexOf(parts[0] as (typeof MONTHS)[number])
+  if (mesIdx === -1) return null
+  const anoVal = Number(parts[1])
+  return { mes: mesIdx + 1, ano: anoVal < 100 ? 2000 + anoVal : anoVal }
+}
+
 export function DashboardPage() {
+  const navigate = useNavigate()
   const [ano, setAno] = useState(CURRENT_YEAR)
   const [mes, setMes] = useState(CURRENT_MONTH)
 
@@ -182,6 +205,7 @@ export function DashboardPage() {
         const metaPct = meta > 0 ? (v.total / meta) * 100 : 0
         return {
           position: i + 1,
+          vendedor_id: v.vendedor_id,
           nome: v.vendedor,
           total: v.total,
           meta: metaPct,
@@ -271,6 +295,7 @@ export function DashboardPage() {
           icon={DollarSign}
           loading={kpiLoading}
           color="primary"
+          href={`${ROUTES.VENDAS}?ano=${ano}&mes=${mes}`}
         />
         <KpiCard
           title="Administradoras"
@@ -287,6 +312,7 @@ export function DashboardPage() {
           icon={Building2}
           loading={kpiLoading}
           color="primary"
+          href={`${ROUTES.VENDAS}?ano=${ano}&mes=${mes}&tipo=administradora`}
         />
         <KpiCard
           title="Clientes Ativos"
@@ -295,6 +321,7 @@ export function DashboardPage() {
           icon={Users}
           loading={kpiLoading}
           color="amber"
+          href={`${ROUTES.CLIENTES}?status=ativo`}
         />
         <KpiCard
           title="Vendas no Mês"
@@ -303,6 +330,7 @@ export function DashboardPage() {
           icon={ShoppingCart}
           loading={kpiLoading}
           color="teal"
+          href={`${ROUTES.VENDAS}?ano=${ano}&mes=${mes}`}
         />
       </div>
 
@@ -365,8 +393,11 @@ export function DashboardPage() {
                     name="Faturamento Total"
                     stroke={CHART_COLORS.primary}
                     strokeWidth={2}
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }}
+                    dot={{ r: 4, cursor: 'pointer' }}
+                    activeDot={{ r: 6, cursor: 'pointer', onClick: (_: unknown, payload: { payload?: { name?: string } }) => {
+                      const parsed = payload?.payload?.name ? parseMonthLabel(payload.payload.name) : null
+                      if (parsed) navigate(`${ROUTES.VENDAS}?ano=${parsed.ano}&mes=${parsed.mes}`)
+                    }}}
                   />
                   <Line
                     type="monotone"
@@ -374,8 +405,11 @@ export function DashboardPage() {
                     name="Administradoras"
                     stroke={CHART_COLORS.teal}
                     strokeWidth={2}
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }}
+                    dot={{ r: 4, cursor: 'pointer' }}
+                    activeDot={{ r: 6, cursor: 'pointer', onClick: (_: unknown, payload: { payload?: { name?: string } }) => {
+                      const parsed = payload?.payload?.name ? parseMonthLabel(payload.payload.name) : null
+                      if (parsed) navigate(`${ROUTES.VENDAS}?ano=${parsed.ano}&mes=${parsed.mes}&tipo=administradora`)
+                    }}}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -410,6 +444,11 @@ export function DashboardPage() {
                     paddingAngle={2}
                     dataKey="value"
                     label={false}
+                    cursor="pointer"
+                    onClick={(data: { name?: string }) => {
+                      const tipo = data?.name ? TYPE_NAME_TO_PARAM[data.name] : null
+                      if (tipo) navigate(`${ROUTES.VENDAS}?ano=${ano}&mes=${mes}&tipo=${tipo}`)
+                    }}
                   >
                     {donutData.map((entry, index) => (
                       <Cell key={index} fill={entry.color} />
@@ -438,7 +477,15 @@ export function DashboardPage() {
                       const item = donutData.find((d) => d.name === value)
                       const total = donutData.reduce((sum, d) => sum + d.value, 0)
                       const pct = item && total > 0 ? ((item.value / total) * 100).toFixed(0) : '0'
-                      return <span className="text-xs text-foreground">{value} {pct}%</span>
+                      const tipo = TYPE_NAME_TO_PARAM[value]
+                      return (
+                        <span
+                          className="text-xs text-foreground cursor-pointer hover:underline"
+                          onClick={() => { if (tipo) navigate(`${ROUTES.VENDAS}?ano=${ano}&mes=${mes}&tipo=${tipo}`) }}
+                        >
+                          {value} {pct}%
+                        </span>
+                      )
                     }}
                   />
                 </PieChart>
@@ -495,24 +542,44 @@ export function DashboardPage() {
                     stackId="a"
                     fill="url(#barGradientAdm)"
                     radius={[4, 4, 4, 4]}
+                    cursor="pointer"
+                    onClick={(data: { name?: string }) => {
+                      const parsed = data?.name ? parseMonthLabel(data.name) : null
+                      if (parsed) navigate(`${ROUTES.VENDAS}?ano=${parsed.ano}&mes=${parsed.mes}&tipo=administradora`)
+                    }}
                   />
                   <Bar
                     dataKey="Síndicos"
                     stackId="a"
                     fill={CHART_COLORS.teal}
                     radius={[4, 4, 4, 4]}
+                    cursor="pointer"
+                    onClick={(data: { name?: string }) => {
+                      const parsed = data?.name ? parseMonthLabel(data.name) : null
+                      if (parsed) navigate(`${ROUTES.VENDAS}?ano=${parsed.ano}&mes=${parsed.mes}&tipo=sindico`)
+                    }}
                   />
                   <Bar
                     dataKey="Empresas"
                     stackId="a"
                     fill={CHART_COLORS.amber}
                     radius={[4, 4, 4, 4]}
+                    cursor="pointer"
+                    onClick={(data: { name?: string }) => {
+                      const parsed = data?.name ? parseMonthLabel(data.name) : null
+                      if (parsed) navigate(`${ROUTES.VENDAS}?ano=${parsed.ano}&mes=${parsed.mes}&tipo=empresa`)
+                    }}
                   />
                   <Bar
                     dataKey="Consumidor Final"
                     stackId="a"
                     fill={CHART_COLORS.gray}
                     radius={[4, 4, 4, 4]}
+                    cursor="pointer"
+                    onClick={(data: { name?: string }) => {
+                      const parsed = data?.name ? parseMonthLabel(data.name) : null
+                      if (parsed) navigate(`${ROUTES.VENDAS}?ano=${parsed.ano}&mes=${parsed.mes}&tipo=consumidor_final`)
+                    }}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -542,9 +609,10 @@ export function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 {ranking.map((v) => (
-                  <div
+                  <Link
                     key={v.position}
-                    className="flex items-center gap-3 rounded-lg border p-3"
+                    to={`${ROUTES.VENDEDORES}?tab=ranking`}
+                    className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
                   >
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                       {v.position}
@@ -574,7 +642,7 @@ export function DashboardPage() {
                         {v.meta.toFixed(0)}% da meta
                       </p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -626,9 +694,11 @@ export function DashboardPage() {
               {inativos.length > 3 && ` e mais ${inativos.length - 3}`}
             </p>
           </div>
-          <Button variant="outline" size="sm" className="shrink-0">
-            Ver detalhes
-          </Button>
+          <Link to={`${ROUTES.CLIENTES}?status=ativo&dias_inativo=60`}>
+            <Button variant="outline" size="sm" className="shrink-0">
+              Ver detalhes
+            </Button>
+          </Link>
         </div>
       )}
     </div>

@@ -61,6 +61,7 @@ interface OmieContaReceber {
   codigo_vendedor?: number
   valor_documento: number
   data_vencimento: string
+  data_emissao?: string
   data_registro: string
   status_titulo: string
   numero_documento: string
@@ -377,33 +378,24 @@ async function syncVendas(
     const items = (result.data.conta_receber_cadastro as OmieContaReceber[]) || []
     totalApiRecords += items.length
 
-    // Build batch records
+    // Build batch records — NEVER skip records to ensure totals match Omie exactly
     const records = []
     for (const conta of items) {
-      if (!conta.codigo_cliente_fornecedor) {
-        skipNoClient++
-        continue
-      }
+      // Resolve client (nullable — unmatched contas still get recorded)
+      const cliente = conta.codigo_cliente_fornecedor
+        ? clienteMap.get(conta.codigo_cliente_fornecedor)
+        : null
+      if (!cliente) skipNoClient++
 
-      const cliente = clienteMap.get(conta.codigo_cliente_fornecedor)
-      if (!cliente) {
-        skipNoClient++
-        continue
-      }
-
-      // Primary: conta.codigo_vendedor (present on ~90% of VENR records)
-      // Fallback: cliente.vendedor_id (from recomendacoes.codigo_vendedor)
+      // Resolve vendedor (nullable — unmatched contas still get recorded)
       const vendedorId = conta.codigo_vendedor
-        ? vendedorMap.get(conta.codigo_vendedor) ?? cliente.vendedor_id
-        : cliente.vendedor_id
-
-      if (!vendedorId) {
-        skipNoVendedor++
-        continue
-      }
+        ? vendedorMap.get(conta.codigo_vendedor) ?? cliente?.vendedor_id ?? null
+        : cliente?.vendedor_id ?? null
+      if (!vendedorId) skipNoVendedor++
 
       // Parse date (format: dd/mm/yyyy)
-      const dataStr = conta.data_vencimento || conta.data_registro
+      // Priority: data_emissao (invoice date) > data_vencimento (due date) > data_registro (system date)
+      const dataStr = conta.data_emissao || conta.data_vencimento || conta.data_registro
       let mes = new Date().getMonth() + 1
       let ano = new Date().getFullYear()
       let dataVenda: string | null = null
@@ -434,13 +426,13 @@ async function syncVendas(
 
       records.push({
         omie_id: conta.codigo_lancamento_omie,
-        cliente_id: cliente.id,
+        cliente_id: cliente?.id ?? null,
         vendedor_id: vendedorId,
         valor,
         mes,
         ano,
         data_venda: dataVenda,
-        tipo_cliente: cliente.tipo,
+        tipo_cliente: cliente?.tipo ?? 'desconhecido',
         status,
         nota_fiscal: conta.numero_documento || null,
         observacao: conta.observacao || null,
@@ -481,7 +473,7 @@ async function syncVendas(
 // ----------------------------------------------------------------
 // Sync Pedidos — from /produtos/pedido/ → ListarPedidos
 // ----------------------------------------------------------------
-const PEDIDOS_MAX_PAGES_PER_CALL = 5  // Limit per invocation to stay under 60s timeout
+const PEDIDOS_MAX_PAGES_PER_CALL = 5  // ~5 pages × (600ms delay + heavy upsert) ≈ 50-80s, safe under 150s
 
 interface SyncPedidosOptions {
   maxPages?: number

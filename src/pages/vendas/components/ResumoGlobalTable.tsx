@@ -21,6 +21,7 @@ const MONTH_ABBR = [
 
 interface ResumoGlobalTableProps {
   ano: number
+  mes?: number
 }
 
 interface RowConfig {
@@ -44,8 +45,14 @@ function formatCompactCurrency(value: number): string {
   return formatCurrency(value)
 }
 
-export function ResumoGlobalTable({ ano }: ResumoGlobalTableProps) {
-  const { data, isLoading } = useResumoGlobal(ano)
+export function ResumoGlobalTable({ ano, mes }: ResumoGlobalTableProps) {
+  const { data: rawData, isLoading } = useResumoGlobal(ano)
+
+  const data = useMemo(() => {
+    if (!rawData?.length) return rawData
+    if (!mes) return rawData
+    return rawData.filter((d) => d.mes === mes)
+  }, [rawData, mes])
 
   const { months, rowData, annualTotals } = useMemo(() => {
     if (!data?.length) {

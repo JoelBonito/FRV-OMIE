@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  AlertTriangle,
   Database,
   Loader2,
 } from 'lucide-react'
@@ -28,11 +27,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { useSyncLogs, useConfigOmie, acquireSyncLock, releaseSyncLock, isSyncLocked } from '@/hooks/useSync'
 import { triggerSync, type SyncResult, type SyncMode } from '@/services/api/sync'
@@ -125,11 +119,13 @@ function SyncStatusCard({
   lastSync,
   interval,
   phase,
+  progress,
 }: {
   status: string
   lastSync: string | null
   interval: number
   phase: string | null
+  progress: { current: number; total: number; percent: number } | null
 }) {
   const statusLabel = phase
     ? PHASE_LABELS[phase] ?? 'Sincronizando...'
@@ -163,11 +159,26 @@ function SyncStatusCard({
         </div>
 
         {phase && (
-          <div className="flex items-center gap-2 rounded-lg bg-[#0066FF]/5 border border-[#0066FF]/20 p-3">
-            <Loader2 className="h-4 w-4 text-[#0066FF] animate-spin" />
-            <span className="text-sm text-[#0066FF] font-medium">
-              Fase: {phase.charAt(0).toUpperCase() + phase.slice(1)}
-            </span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 rounded-lg bg-[#0066FF]/5 border border-[#0066FF]/20 p-3">
+              <Loader2 className="h-4 w-4 text-[#0066FF] animate-spin" />
+              <span className="text-sm text-[#0066FF] font-medium flex-1">
+                Fase: {phase.charAt(0).toUpperCase() + phase.slice(1)}
+              </span>
+              {progress && (
+                <span className="text-sm font-bold text-[#0066FF] tabular-nums">
+                  {progress.percent}%
+                </span>
+              )}
+            </div>
+            {progress && (
+              <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-[#0066FF] h-2.5 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${progress.percent}%` }}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -243,9 +254,9 @@ export function SyncPage() {
   const [syncMode, setSyncMode] = useState<SyncMode>('incremental')
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncPhase, setSyncPhase] = useState<string | null>(null)
+  const [syncProgress, setSyncProgress] = useState<{ current: number; total: number; percent: number } | null>(null)
 
   const isLoading = logsLoading || configLoading
-  const hasConfig = config?.has_credentials ?? false
 
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['sync-logs'] })
@@ -279,9 +290,16 @@ export function SyncPage() {
         totalCriados += pd.criados
         totalItens += pd.itensProcessados ?? 0
 
+        // Update progress percentage
+        if (pd.totalPages && pd.pagesProcessed) {
+          const pagesCompleted = (pd.nextPage ?? pd.totalPages + 1) - 1
+          const percent = Math.round((pagesCompleted / pd.totalPages) * 100)
+          setSyncProgress({ current: pagesCompleted, total: pd.totalPages, percent })
+        }
+
         toast.info(
           `Pedidos batch ${batchCount}: ${pd.processados} processados` +
-          (pd.totalPages ? ` (pág ${pd.pagesProcessed}/${pd.totalPages})` : ''),
+          (pd.totalPages ? ` (pág ${(pd.nextPage ?? pd.totalPages + 1) - 1}/${pd.totalPages} — ${Math.round(((pd.nextPage ?? pd.totalPages + 1) - 1) / pd.totalPages * 100)}%)` : ''),
         )
 
         if (pd.hasMore && pd.nextPage) {
@@ -319,9 +337,12 @@ export function SyncPage() {
         // Sequential sync to avoid 60s Edge Function timeout
         const nonPedidoStages = ['vendedores', 'clientes', 'vendas'] as const
         const results: Partial<Record<'vendedores' | 'clientes' | 'vendas' | 'pedidos', SyncResult>> = {}
+        const fullStageCount = 4 // vendedores, clientes, vendas, pedidos
 
-        for (const stage of nonPedidoStages) {
+        for (let i = 0; i < nonPedidoStages.length; i++) {
+          const stage = nonPedidoStages[i]
           setSyncPhase(stage)
+          setSyncProgress({ current: i, total: fullStageCount, percent: Math.round((i / fullStageCount) * 100) })
           const result = await triggerSync(stage, syncMode)
           results[stage] = result
 
@@ -389,6 +410,7 @@ export function SyncPage() {
       releaseSyncLock()
       setIsSyncing(false)
       setSyncPhase(null)
+      setSyncProgress(null)
       invalidateAll()
     }
   }
@@ -454,40 +476,17 @@ export function SyncPage() {
             </SelectContent>
           </Select>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span tabIndex={0}>
-                <Button
-                  className="gap-2 bg-[#00C896] hover:bg-[#00B085] shadow-lg shadow-[#00C896]/20"
-                  disabled={!hasConfig || isSyncing}
-                  onClick={handleSync}
-                >
-                  <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                  {isSyncing ? 'Sincronizando...' : 'Sincronizar Agora'}
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {!hasConfig && (
-              <TooltipContent>
-                <p>Configure as credenciais Omie primeiro</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
+          <Button
+            className="gap-2 bg-[#00C896] hover:bg-[#00B085] shadow-lg shadow-[#00C896]/20"
+            disabled={isSyncing}
+            onClick={handleSync}
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Sincronizando...' : 'Sincronizar Agora'}
+          </Button>
         </div>
       </div>
 
-      {/* Alert if no config */}
-      {!hasConfig && (
-        <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
-          <div>
-            <p className="text-sm font-medium">Credenciais não configuradas</p>
-            <p className="text-xs text-muted-foreground">
-              Vá para Configurações para informar app_key e app_secret do Omie.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Status card + summary */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -496,6 +495,7 @@ export function SyncPage() {
           lastSync={config?.ultimo_sync ?? null}
           interval={config?.sync_interval_hours ?? 6}
           phase={syncPhase}
+          progress={syncProgress}
         />
         <div className="lg:col-span-2">
           <SyncSummaryCards logs={logs ?? []} />

@@ -61,11 +61,19 @@ export function useVendasMesCount(ano: number, mes: number) {
   return useQuery({
     queryKey: ['vendas-mes-count', ano, mes],
     queryFn: async (): Promise<number> => {
+      // Count pedidos (sales orders) by previsao_faturamento month/year
+      // Matches Omie pivot logic: "Pedidos por Previsão de Faturamento"
+      const startDate = `${ano}-${String(mes).padStart(2, '0')}-01`
+      const endDate = mes === 12
+        ? `${ano + 1}-01-01`
+        : `${ano}-${String(mes + 1).padStart(2, '0')}-01`
+
       const { count, error } = await supabase
-        .from('vendas')
+        .from('pedidos')
         .select('*', { count: 'exact', head: true })
-        .eq('ano', ano)
-        .eq('mes', mes)
+        .gte('previsao_faturamento', startDate)
+        .lt('previsao_faturamento', endDate)
+        .neq('status', 'cancelado')
       if (error) throw error
       return count ?? 0
     },

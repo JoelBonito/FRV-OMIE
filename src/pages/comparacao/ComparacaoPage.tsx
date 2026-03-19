@@ -217,19 +217,19 @@ export function ComparacaoPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
-                        <th className="pb-3 pr-4 font-medium sticky left-0 z-10 bg-card">Administradora</th>
-                        <th className="pb-3 pr-4 font-medium text-right">Condominios {labelA}</th>
-                        <th className="pb-3 pr-4 font-medium text-right">Condominios {labelB}</th>
-                        <th className="pb-3 pr-4 font-medium text-right">Retidos</th>
-                        <th className="pb-3 pr-4 font-medium text-right">Perdidos</th>
-                        <th className="pb-3 pr-4 font-medium text-right">Novos</th>
-                        <th className="pb-3 pr-4 font-medium text-right">Retencao</th>
-                        <th className="pb-3 pr-4 font-medium text-right">Fat. {labelA}</th>
-                        <th className="pb-3 pr-4 font-medium text-right">Fat. {labelB}</th>
-                        <th className="pb-3 pr-4 font-medium text-right">Delta Fat.</th>
-                        <th className="pb-3 pr-4 font-medium text-right">% Fat.</th>
-                        <th className="pb-3 pr-4 font-medium text-right">Δ Ped.</th>
-                        <th className="pb-3 font-medium text-right">Δ Cond.</th>
+                        <th className="pb-3 pr-4 font-medium sticky left-0 z-10 bg-card whitespace-nowrap">Administradora</th>
+                        <th className="pb-3 pr-4 font-medium text-right whitespace-nowrap" title="Condominios">Cond. {labelA}</th>
+                        <th className="pb-3 pr-4 font-medium text-right whitespace-nowrap" title="Condominios">Cond. {labelB}</th>
+                        <th className="pb-3 pr-4 font-medium text-right whitespace-nowrap">Retidos</th>
+                        <th className="pb-3 pr-4 font-medium text-right whitespace-nowrap">Perdidos</th>
+                        <th className="pb-3 pr-4 font-medium text-right whitespace-nowrap">Novos</th>
+                        <th className="pb-3 pr-4 font-medium text-right whitespace-nowrap" title="Taxa de Retenção">Ret. %</th>
+                        <th className="pb-3 pr-4 font-medium text-right whitespace-nowrap" title="Faturamento">Fat. {labelA}</th>
+                        <th className="pb-3 pr-4 font-medium text-right whitespace-nowrap" title="Faturamento">Fat. {labelB}</th>
+                        <th className="pb-3 pr-4 font-medium text-right whitespace-nowrap" title="Delta Faturamento">Δ Fat.</th>
+                        <th className="pb-3 pr-4 font-medium text-right whitespace-nowrap" title="% Faturamento">% Fat.</th>
+                        <th className="pb-3 pr-4 font-medium text-right whitespace-nowrap" title="Delta Pedidos">Δ Ped.</th>
+                        <th className="pb-3 font-medium text-right whitespace-nowrap" title="Delta Condominios">Δ Cond.</th>
                       </tr>
                     </thead>
                     <tbody>

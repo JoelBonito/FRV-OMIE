@@ -35,18 +35,20 @@ import {
 } from '@/hooks/useClientes'
 import { CLIENT_TYPES } from '@/lib/constants'
 import { TYPE_LABEL, TYPE_BADGE_COLORS } from '@/lib/theme-constants'
+import { useFilterParams } from '@/hooks/useFilterParams'
 import type { ClienteWithVendedor } from '@/services/api/clientes'
 
 
 
 export function ClientesPage() {
   const navigate = useNavigate()
+  const urlParams = useFilterParams()
   const { data: clientes, isLoading } = useClientes()
   const deleteMutation = useDeleteCliente()
 
   const [search, setSearch] = useState('')
-  const [filterTipo, setFilterTipo] = useState<string>('todos')
-  const [filterStatus, setFilterStatus] = useState<string>('todos')
+  const [filterTipo, setFilterTipo] = useState<string>(urlParams.tipo ?? 'todos')
+  const [filterStatus, setFilterStatus] = useState<string>(urlParams.status ?? 'todos')
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingCliente, setEditingCliente] = useState<ClienteWithVendedor | null>(null)

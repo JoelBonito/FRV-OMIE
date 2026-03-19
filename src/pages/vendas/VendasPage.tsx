@@ -9,7 +9,6 @@ import {
   List,
   BarChart3,
   Users,
-  SlidersHorizontal,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -28,14 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
+// Sheet removed — advanced filters moved inline
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TableCell, TableRow } from '@/components/ui/table'
@@ -52,6 +44,7 @@ import {
 import { formatCurrency, formatMonthYear } from '@/lib/formatters'
 import { CLIENT_TYPES, SALE_STATUSES, MONTHS } from '@/lib/constants'
 import { TYPE_LABEL, TYPE_BADGE_COLORS, STATUS_BADGE } from '@/lib/theme-constants'
+import { useFilterParams } from '@/hooks/useFilterParams'
 import type { VendaWithRelations } from '@/services/api/vendas'
 
 const now = new Date()
@@ -62,15 +55,16 @@ type ViewMode = 'registros' | 'resumo' | 'vendedores'
 
 
 export function VendasPage() {
+  const urlParams = useFilterParams()
   const [viewMode, setViewMode] = useState<ViewMode>('registros')
-  const [filterAno, setFilterAno] = useState(CURRENT_YEAR)
-  const [filterMes, setFilterMes] = useState<number | undefined>(undefined)
+  const [filterAno, setFilterAno] = useState(urlParams.ano ?? CURRENT_YEAR)
+  const [filterMes, setFilterMes] = useState<number | undefined>(urlParams.mes)
   const [filterVendedor, setFilterVendedor] = useState<string | undefined>(
-    undefined
+    urlParams.vendedor
   )
-  const [filterTipo, setFilterTipo] = useState<string | undefined>(undefined)
+  const [filterTipo, setFilterTipo] = useState<string | undefined>(urlParams.tipo)
   const [filterStatus, setFilterStatus] = useState<string | undefined>(
-    undefined
+    urlParams.status
   )
   const [search, setSearch] = useState('')
 
@@ -334,176 +328,125 @@ export function VendasPage() {
         {/* ── Tab: Registros ── */}
         <TabsContent value="registros" className="space-y-6 mt-4">
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 items-end">
-            <div className="space-y-1 flex-1 min-w-[200px]">
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="space-y-1 min-w-[180px] flex-1 max-w-[320px]">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <Search className="h-3 w-3 text-[#0066FF]" />
                 Buscar Venda
               </label>
               <Input
-                placeholder="Por cliente, vendedor ou NF..."
+                placeholder="Cliente, vendedor, NF..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-9 text-xs border-slate-200 focus-visible:ring-[#0066FF]/20 transition-all shadow-sm"
               />
             </div>
-            
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Mês</label>
-                <Select
-                  value={String(filterMes ?? 'todos')}
-                  onValueChange={(v) =>
-                    setFilterMes(v === 'todos' ? undefined : Number(v))
-                  }
-                >
-                  <SelectTrigger className="h-9 w-[120px] text-xs border-slate-200 shadow-sm focus:ring-[#0066FF]/20">
-                    <SelectValue placeholder="Mês" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos" className="font-bold">Todos</SelectItem>
-                    {MONTHS.map((m, i) => (
-                      <SelectItem key={i} value={String(i + 1)}>
-                        {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Ano</label>
-                <Select
-                  value={String(filterAno)}
-                  onValueChange={(v) => setFilterAno(Number(v))}
-                >
-                  <SelectTrigger className="h-9 w-[100px] text-xs border-slate-200 shadow-sm focus:ring-[#0066FF]/20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[CURRENT_YEAR - 1, CURRENT_YEAR].map((y) => (
-                      <SelectItem key={y} value={String(y)}>
-                        {y}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700">Mês</label>
+              <Select
+                value={String(filterMes ?? 'todos')}
+                onValueChange={(v) =>
+                  setFilterMes(v === 'todos' ? undefined : Number(v))
+                }
+              >
+                <SelectTrigger className="h-9 w-[110px] text-xs border-slate-200 shadow-sm focus:ring-[#0066FF]/20">
+                  <SelectValue placeholder="Mês" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos" className="font-bold">Todos</SelectItem>
+                  {MONTHS.map((m, i) => (
+                    <SelectItem key={i} value={String(i + 1)}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 opacity-0 mb-1 block">Filtros</label>
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" className="h-9 gap-2 border-slate-200 hover:bg-slate-50 relative shadow-sm">
-                      <SlidersHorizontal className="h-4 w-4 text-[#0066FF]" />
-                      <span className="hidden sm:inline font-bold">Avançados</span>
-                      {(filterVendedor || filterTipo || filterStatus) && (
-                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#0066FF] text-[10px] font-bold text-white ring-2 ring-white">
-                          {[filterVendedor, filterTipo, filterStatus].filter(Boolean).length}
-                        </span>
-                      )}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-full sm:w-[400px]">
-                    <SheetHeader>
-                      <SheetTitle className="font-extrabold flex items-center gap-2">
-                        <SlidersHorizontal className="h-5 w-5 text-[#0066FF]" />
-                        Filtros Avançados
-                      </SheetTitle>
-                      <SheetDescription>
-                        Filtros detalhados para refinar a busca de vendas.
-                      </SheetDescription>
-                    </SheetHeader>
-                    
-                    <div className="flex flex-col gap-6 mt-8">
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">
-                          Vendedor
-                        </label>
-                        <Select
-                          value={filterVendedor ?? 'todos'}
-                          onValueChange={(v) =>
-                            setFilterVendedor(v === 'todos' ? undefined : v)
-                          }
-                        >
-                          <SelectTrigger className="h-10 text-sm border-slate-200 focus:ring-[#0066FF]/20">
-                            <SelectValue placeholder="Todos" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="todos" className="font-bold">Todos</SelectItem>
-                            {vendedores?.map((v) => (
-                              <SelectItem key={v.id} value={v.id}>
-                                {v.nome}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700">Ano</label>
+              <Select
+                value={String(filterAno)}
+                onValueChange={(v) => setFilterAno(Number(v))}
+              >
+                <SelectTrigger className="h-9 w-[90px] text-xs border-slate-200 shadow-sm focus:ring-[#0066FF]/20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[CURRENT_YEAR - 1, CURRENT_YEAR].map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">
-                          Tipo de Cliente
-                        </label>
-                        <Select
-                          value={filterTipo ?? 'todos'}
-                          onValueChange={(v) =>
-                            setFilterTipo(v === 'todos' ? undefined : v)
-                          }
-                        >
-                          <SelectTrigger className="h-10 text-sm border-slate-200 focus:ring-[#0066FF]/20">
-                            <SelectValue placeholder="Todos os tipos" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="todos" className="font-bold">Todos os tipos</SelectItem>
-                            {CLIENT_TYPES.map((t) => (
-                              <SelectItem key={t.value} value={t.value}>
-                                {t.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700">Vendedor</label>
+              <Select
+                value={filterVendedor ?? 'todos'}
+                onValueChange={(v) =>
+                  setFilterVendedor(v === 'todos' ? undefined : v)
+                }
+              >
+                <SelectTrigger className="h-9 w-[130px] text-xs border-slate-200 shadow-sm focus:ring-[#0066FF]/20">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos" className="font-bold">Todos</SelectItem>
+                  {vendedores?.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">
-                          Status da Venda
-                        </label>
-                        <Select
-                          value={filterStatus ?? 'todos'}
-                          onValueChange={(v) =>
-                            setFilterStatus(v === 'todos' ? undefined : v)
-                          }
-                        >
-                          <SelectTrigger className="h-10 text-sm border-slate-200 focus:ring-[#0066FF]/20">
-                            <SelectValue placeholder="Todos" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="todos" className="font-bold">Todos</SelectItem>
-                            {SALE_STATUSES.map((s) => (
-                              <SelectItem key={s.value} value={s.value}>
-                                {s.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <Button 
-                        variant="outline" 
-                        onClick={() => {
-                          setFilterVendedor(undefined)
-                          setFilterTipo(undefined)
-                          setFilterStatus(undefined)
-                        }}
-                        className="mt-4 border-slate-200 hover:bg-slate-50 transition-colors font-bold text-slate-600"
-                        disabled={!filterVendedor && !filterTipo && !filterStatus}
-                      >
-                        Limpar Filtros Avançados
-                      </Button>
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700">Tipo</label>
+              <Select
+                value={filterTipo ?? 'todos'}
+                onValueChange={(v) =>
+                  setFilterTipo(v === 'todos' ? undefined : v)
+                }
+              >
+                <SelectTrigger className="h-9 w-[130px] text-xs border-slate-200 shadow-sm focus:ring-[#0066FF]/20">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos" className="font-bold">Todos</SelectItem>
+                  {CLIENT_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700">Status</label>
+              <Select
+                value={filterStatus ?? 'todos'}
+                onValueChange={(v) =>
+                  setFilterStatus(v === 'todos' ? undefined : v)
+                }
+              >
+                <SelectTrigger className="h-9 w-[120px] text-xs border-slate-200 shadow-sm focus:ring-[#0066FF]/20">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos" className="font-bold">Todos</SelectItem>
+                  {SALE_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -569,6 +512,29 @@ export function VendasPage() {
           <div className="flex items-end gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">
+                Mês
+              </label>
+              <Select
+                value={String(filterMes ?? 'todos')}
+                onValueChange={(v) =>
+                  setFilterMes(v === 'todos' ? undefined : Number(v))
+                }
+              >
+                <SelectTrigger className="h-9 w-[120px] text-xs">
+                  <SelectValue placeholder="Mês" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos" className="font-bold">Todos</SelectItem>
+                  {MONTHS.map((m, i) => (
+                    <SelectItem key={i} value={String(i + 1)}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
                 Ano
               </label>
               <Select
@@ -588,10 +554,10 @@ export function VendasPage() {
               </Select>
             </div>
             <p className="text-sm text-muted-foreground pb-2">
-              Vendas totais por tipo de cliente, mês a mês
+              Vendas totais por tipo de cliente{filterMes ? ` — ${MONTHS[filterMes - 1]}` : ', mês a mês'}
             </p>
           </div>
-          <ResumoGlobalTable ano={filterAno} />
+          <ResumoGlobalTable ano={filterAno} mes={filterMes} />
         </TabsContent>
 
         {/* ── Tab: Por Vendedor ── */}

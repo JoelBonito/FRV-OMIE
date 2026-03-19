@@ -39,8 +39,12 @@ export function MainLayout() {
   useAutoSync()
 
   // Sync status for header indicator
-  const syncStatus = config?.status_sync ?? 'idle'
+  // Auto-recover stale "running" status: if running for > 5 min, treat as idle
+  const rawStatus = config?.status_sync ?? 'idle'
   const lastSync = config?.ultimo_sync ?? null
+  const isStaleRunning = rawStatus === 'running' && lastSync
+    && (Date.now() - new Date(lastSync).getTime()) > 5 * 60 * 1000
+  const syncStatus = isStaleRunning ? 'idle' : rawStatus
 
   return (
     <div className="min-h-screen bg-background">

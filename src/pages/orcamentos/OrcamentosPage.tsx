@@ -42,35 +42,21 @@ import { useVendedoresForSelect } from '@/hooks/useVendas'
 import { formatCurrency } from '@/lib/formatters'
 import type { PedidoWithRelations } from '@/services/api/pedidos'
 
-const ETAPA_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  'ORCAMENTO': { label: 'Orçamento', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400', icon: ClipboardList },
-  'SEPARAR': { label: 'Separar Estoque', color: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400', icon: Package },
-  'EM ROTA': { label: 'Em Rota', color: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400', icon: Truck },
-  'ENTREGUE': { label: 'Entregue', color: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400', icon: CheckCircle2 },
+/** Omie numeric stage codes → human-readable labels */
+const ETAPA_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType; cardBorder: string }> = {
+  '00': { label: 'Orçamento', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400', icon: ClipboardList, cardBorder: 'border-l-[#0066FF]' },
+  '10': { label: 'Pedido / Faturar', color: 'bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-400', icon: FileText, cardBorder: 'border-l-cyan-500' },
+  '20': { label: 'Separar Estoque', color: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400', icon: Package, cardBorder: 'border-l-amber-500' },
+  '60': { label: 'Faturado Parcial', color: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400', icon: Truck, cardBorder: 'border-l-purple-500' },
+  '70': { label: 'Faturado', color: 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400', icon: CheckCircle2, cardBorder: 'border-l-teal-500' },
+  '80': { label: 'Entregue', color: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400', icon: CheckCircle2, cardBorder: 'border-l-[#00C896]' },
 }
 
-const ETAPA_CARD_COLORS: Record<string, string> = {
-  'ORCAMENTO': 'border-l-[#0066FF]',
-  'SEPARAR': 'border-l-amber-500',
-  'EM ROTA': 'border-l-purple-500',
-  'ENTREGUE': 'border-l-[#00C896]',
-}
+const DEFAULT_ETAPA = { label: 'Sem Etapa', color: 'bg-muted text-muted-foreground', icon: FileText, cardBorder: 'border-l-muted' }
 
 function getEtapaConfig(etapa: string | null) {
-  if (!etapa) return { label: 'Sem Etapa', color: 'bg-muted text-muted-foreground', icon: FileText }
-  const upper = etapa.toUpperCase()
-  for (const [key, cfg] of Object.entries(ETAPA_CONFIG)) {
-    if (upper.includes(key)) return cfg
-  }
-  return { label: etapa, color: 'bg-muted text-muted-foreground', icon: FileText }
-}
-
-function getEtapaCardColor(etapa: string) {
-  const upper = etapa.toUpperCase()
-  for (const [key, color] of Object.entries(ETAPA_CARD_COLORS)) {
-    if (upper.includes(key)) return color
-  }
-  return 'border-l-muted'
+  if (!etapa) return DEFAULT_ETAPA
+  return ETAPA_CONFIG[etapa] ?? { ...DEFAULT_ETAPA, label: `Etapa ${etapa}` }
 }
 
 function formatDate(dateStr: string | null): string {
@@ -83,15 +69,23 @@ export function OrcamentosPage() {
   const [searchParams] = useSearchParams()
   const [filterEtapa, setFilterEtapa] = useState<string | undefined>(undefined)
   const [filterVendedor, setFilterVendedor] = useState<string | undefined>(undefined)
+  const [filterDateFrom, setFilterDateFrom] = useState<string | undefined>(undefined)
+  const [filterDateTo, setFilterDateTo] = useState<string | undefined>(undefined)
   const [search, setSearch] = useState('')
   const [selectedPedido, setSelectedPedido] = useState<PedidoWithRelations | null>(null)
 
   const { data: pedidos, isLoading } = usePedidos({
     etapa: filterEtapa,
     vendedor_id: filterVendedor,
+    dateFrom: filterDateFrom,
+    dateTo: filterDateTo,
   })
   const { data: stats } = usePedidoStats()
-  const { data: vendedores } = useVendedoresForSelect()
+  const { data: allVendedores } = useVendedoresForSelect()
+  const vendedores = useMemo(
+    () => allVendedores?.filter((v) => v.status === 'ativo'),
+    [allVendedores],
+  )
   const { data: itens, isLoading: itensLoading } = usePedidoItens(selectedPedido?.id ?? null)
 
   // Etapas distintas para o filtro
@@ -376,7 +370,7 @@ export function OrcamentosPage() {
             .map((s) => {
               const cfg = getEtapaConfig(s.etapa)
               const Icon = cfg.icon
-              const cardColor = getEtapaCardColor(s.etapa)
+              const cardColor = cfg.cardBorder
               return (
                 <Card
                   key={s.etapa}
@@ -404,18 +398,31 @@ export function OrcamentosPage() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-end">
+      <div className="flex flex-wrap gap-2 items-end">
+        <div className="space-y-1 min-w-[160px] flex-1 max-w-[280px]">
+          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <Search className="h-3 w-3 text-[#0066FF]" />
+            Buscar Pedido
+          </label>
+          <Input
+            placeholder="Pedido, cliente, vendedor..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9 text-xs border-slate-200 focus-visible:ring-[#0066FF]/20 shadow-sm"
+          />
+        </div>
+
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Etapa</label>
+          <label className="text-xs font-bold text-slate-700">Etapa</label>
           <Select
             value={filterEtapa ?? 'todos'}
             onValueChange={(v) => setFilterEtapa(v === 'todos' ? undefined : v)}
           >
-            <SelectTrigger className="h-9 w-[180px] text-xs">
-              <SelectValue placeholder="Todas as etapas" />
+            <SelectTrigger className="h-9 w-[150px] text-xs border-slate-200 shadow-sm focus:ring-[#0066FF]/20">
+              <SelectValue placeholder="Todas" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todas as etapas</SelectItem>
+              <SelectItem value="todos" className="font-bold">Todas as etapas</SelectItem>
               {etapasDisponiveis.map((e) => (
                 <SelectItem key={e} value={e}>
                   {getEtapaConfig(e).label}
@@ -426,16 +433,16 @@ export function OrcamentosPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Vendedor</label>
+          <label className="text-xs font-bold text-slate-700">Vendedor</label>
           <Select
             value={filterVendedor ?? 'todos'}
             onValueChange={(v) => setFilterVendedor(v === 'todos' ? undefined : v)}
           >
-            <SelectTrigger className="h-9 w-[160px] text-xs">
+            <SelectTrigger className="h-9 w-[130px] text-xs border-slate-200 shadow-sm focus:ring-[#0066FF]/20">
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="todos" className="font-bold">Todos</SelectItem>
               {vendedores?.map((v) => (
                 <SelectItem key={v.id} value={v.id}>
                   {v.nome}
@@ -445,17 +452,24 @@ export function OrcamentosPage() {
           </Select>
         </div>
 
-        <div className="space-y-1 flex-1 min-w-[200px]">
-          <label className="text-xs font-medium text-muted-foreground">Busca</label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar pedido, cliente, vendedor..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-xs"
-            />
-          </div>
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-slate-700">De</label>
+          <Input
+            type="date"
+            value={filterDateFrom ?? ''}
+            onChange={(e) => setFilterDateFrom(e.target.value || undefined)}
+            className="h-9 w-[140px] text-xs border-slate-200 shadow-sm focus-visible:ring-[#0066FF]/20"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-slate-700">Até</label>
+          <Input
+            type="date"
+            value={filterDateTo ?? ''}
+            onChange={(e) => setFilterDateTo(e.target.value || undefined)}
+            className="h-9 w-[140px] text-xs border-slate-200 shadow-sm focus-visible:ring-[#0066FF]/20"
+          />
         </div>
       </div>
 

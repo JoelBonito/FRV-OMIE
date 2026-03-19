@@ -1,4 +1,5 @@
 import { type LucideIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -13,6 +14,7 @@ interface KpiCardProps {
   icon: LucideIcon
   loading?: boolean
   color?: KpiColor
+  href?: string
 }
 
 const colorMap: Record<
@@ -61,6 +63,7 @@ export function KpiCard({
   icon: Icon,
   loading,
   color = 'primary',
+  href,
 }: KpiCardProps) {
   if (loading) {
     return (
@@ -80,8 +83,8 @@ export function KpiCard({
   const isPositive = change !== undefined && change >= 0
   const palette = colorMap[color]
 
-  return (
-    <Card className="relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+  const card = (
+    <Card className={`relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300${href ? ' cursor-pointer' : ''}`}>
       <CardContent className="p-5">
         {/* Glow effect */}
         <div
@@ -127,4 +130,10 @@ export function KpiCard({
       </CardContent>
     </Card>
   )
+
+  if (href) {
+    return <Link to={href} className="block">{card}</Link>
+  }
+
+  return card
 }

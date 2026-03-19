@@ -29,11 +29,15 @@ export async function getVendas(filters?: {
       query = query.eq('vendedor_id', filters.vendedor_id)
     if (filters?.tipo_cliente)
       query = query.eq('tipo_cliente', filters.tipo_cliente)
-    if (filters?.status)
+    if (filters?.status) {
       query = query.eq(
         'status',
         filters.status as 'faturado' | 'pendente' | 'cancelado'
       )
+    } else {
+      // By default, exclude cancelled records (reissued receivables)
+      query = query.neq('status', 'cancelado')
+    }
 
     return query
   })
