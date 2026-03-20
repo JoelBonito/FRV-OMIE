@@ -74,6 +74,7 @@ export function useVendasMesCount(ano: number, mes: number) {
         .gte('previsao_faturamento', startDate)
         .lt('previsao_faturamento', endDate)
         .neq('status', 'cancelado')
+        .neq('etapa', '00')
       if (error) throw error
       return count ?? 0
     },
